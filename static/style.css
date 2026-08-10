@@ -90,6 +90,17 @@ html, body {
 
 /* ---------- mechanical eye ---------- */
 
+/* only the active pilot design is rendered */
+#eye .design { display: none; }
+#eye[data-design="classic"] .design[data-el="classic"],
+#eye[data-design="scorch"] .design[data-el="scorch"],
+#eye[data-design="sentry"] .design[data-el="sentry"],
+#eye[data-design="iris"] .design[data-el="iris"],
+#eye[data-design="radar"] .design[data-el="radar"],
+#eye[data-design="mantis"] .design[data-el="mantis"] {
+  display: block;
+}
+
 .eyezone {
   display: flex;
   flex-direction: column;
@@ -100,8 +111,9 @@ html, body {
 }
 
 .eye {
-  width: min(420px, 70vw);
-  height: auto;
+  width: auto;
+  height: 60vh;
+  max-width: 100vw;
   display: block;
 }
 
@@ -113,12 +125,54 @@ html, body {
   color: var(--muted);
   min-height: 16px;
   text-transform: uppercase;
+  transition: color 0.4s ease;
+}
+
+.chatbar {
+  display: flex;
+  justify-content: center;
+  padding: 10px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.chatbar button {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 7px 22px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.chatbar button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+body.chat-hidden #chat,
+body.chat-hidden .inputbar {
+  display: none;
+}
+
+body.chat-hidden {
+  height: auto;
+  min-height: 100vh;
+}
+
+body.chat-hidden .eyezone {
+  min-height: calc(100vh - 110px);
+  justify-content: center;
 }
 
 /* base idle: slow breathing */
 .eye-core {
   transform-origin: 210px 128px;
   animation: eye-breathe 4s ease-in-out infinite;
+  transition: transform 0.7s ease, opacity 0.7s ease;
 }
 
 @keyframes eye-breathe {
@@ -135,6 +189,7 @@ html, body {
 .pupil {
   transform-origin: 210px 128px;
   animation: pupil-idle 6s ease-in-out infinite;
+  transition: transform 0.7s ease, opacity 0.7s ease;
 }
 @keyframes pupil-idle {
   0%,100% { transform: translate(0px, 0px); }
@@ -143,68 +198,86 @@ html, body {
   75%     { transform: translate(7px, -5px); }
 }
 
+.glow { transition: opacity 0.5s ease; }
+
+/* BT-style horizontal scan line sweep */
+.scan {
+  animation: scan-pulse 3.5s ease-in-out infinite;
+  transition: transform 0.7s ease, opacity 0.5s ease;
+}
+@keyframes scan-pulse {
+  0%,100% { opacity: 0.25; }
+  50%     { opacity: 0.9; }
+}
+#eye[data-state="thinking"] .scan { animation: scan-sweep 2.4s ease-in-out infinite; }
+#eye[data-state="speaking"] .scan { animation: scan-sweep 1.4s ease-in-out infinite; }
+@keyframes scan-sweep {
+  0%   { transform: translateY(calc(var(--scan-travel, 46px) * -1)); opacity: 1; }
+  50%  { transform: translateY(0px); opacity: 0.4; }
+  100% { transform: translateY(var(--scan-travel, 46px)); opacity: 1; }
+}
+#eye[data-design="scorch"] .scan { --scan-travel: 8px; }
+#eye[data-design="sentry"] .scan { --scan-travel: 3px; }
+
 /* STATE: listening / thinking */
 #eyezone[data-state="listening"] .eyebanner,
 #eyezone[data-state="thinking"] .eyebanner { color: var(--accent); }
 
 #eye[data-state="listening"] .pupil {
-  animation: pupil-focus 2.2s ease-in-out infinite;
+  animation: pupil-ready 3.4s ease-in-out infinite;
 }
-@keyframes pupil-focus {
-  0%,100% { transform: translate(-10px, 0px); }
-  50%     { transform: translate(10px, 0px); }
+@keyframes pupil-ready {
+  0%,100% { transform: translate(0px, 0px) scale(1); }
+  50%     { transform: translate(0px, 0px) scale(0.93); }
+}
+#eye[data-state="listening"] .pupil .glow {
+  animation: glow-ready 2.8s ease-in-out infinite;
+}
+@keyframes glow-ready {
+  0%,100% { opacity: 0.45; }
+  50%     { opacity: 1; }
 }
 
 #eye[data-state="thinking"] .pupil {
-  animation: pupil-thinking 0.5s linear infinite;
+  animation: pupil-look 7s ease-in-out infinite;
 }
-@keyframes pupil-thinking {
-  0%   { transform: translate(-14px, 0px); }
-  50%  { transform: translate(14px, 2px); }
-  100% { transform: translate(-14px, 0px); }
-}
-
-#eye[data-state="thinking"] .eye-core {
-  animation: eye-blink 0.8s steps(1) infinite;
-}
-@keyframes eye-blink {
-  0%,100% { opacity: 1; }
-  50%     { opacity: 0.55; }
+@keyframes pupil-look {
+  0%,100% { transform: translate(-7px, 4px) scale(1); }
+  18%     { transform: translate(8px, -6px) scale(1.02); }
+  38%     { transform: translate(10px, 3px) scale(1); }
+  58%     { transform: translate(-5px, -7px) scale(1.03); }
+  78%     { transform: translate(3px, 7px) scale(1); }
 }
 
-/* STATE: speaking */
-#eye[data-state="speaking"] .shutters { animation-duration: 1.4s; }
+/* STATE: speaking — the EYE housing stays static; only the iris light pulses */
+#eye[data-state="speaking"] .shutters { animation-duration: 3.5s; }
 #eye[data-state="speaking"] .pupil {
-  animation: pupil-speak 0.4s ease-in-out infinite;
+  animation: pupil-speak 3s ease-in-out infinite;
 }
 @keyframes pupil-speak {
-  0%   { transform: translate(0px, 0px) scale(1.12); }
-  50%  { transform: translate(2px, -3px) scale(1); }
-  100% { transform: translate(-2px, 2px) scale(1.12); }
+  0%,100% { transform: translate(0px, 0px) scale(1); }
+  50%     { transform: translate(0px, -1px) scale(1.01); }
 }
-#eye[data-state="speaking"] {
-  filter: drop-shadow(0 0 14px rgba(126, 211, 255, 0.6));
+
+/* iris light gently pulses — nothing around the eye animates */
+#eye[data-state="speaking"] .pupil .glow {
+  animation: iris-light-pulse 2s ease-in-out infinite;
+}
+@keyframes iris-light-pulse {
+  0%,100% { opacity: 0.6; }
+  50%     { opacity: 1; }
 }
 
 /* STATE: confused / error */
 #eye[data-state="confused"] .pupil {
-  animation: pupil-confused 0.25s steps(2) infinite;
+  animation: pupil-confused 1.4s ease-in-out infinite;
 }
 @keyframes pupil-confused {
-  0% { transform: translate(-8px, 6px) rotate(0deg); }
-  50%{ transform: translate(9px, -7px) rotate(6deg); }
-  100%{transform: translate(-6px, -4px) rotate(-6deg); }
+  0%,100% { transform: translate(-5px, 3px) rotate(-2deg); }
+  25%     { transform: translate(6px, -5px) rotate(3deg); }
+  75%     { transform: translate(-4px, -3px) rotate(-3deg); }
 }
-#eye[data-state="confused"] .eye-core {
-  animation: core-shake 0.3s linear infinite;
-}
-@keyframes core-shake {
-  0%,100% { transform: scale(1) translate(0,0); }
-  25%     { transform: scale(0.97) translate(-2px, 1px); }
-  75%     { transform: scale(1.03) translate(2px, -1px); }
-}
-#eye[data-state="confused"] .pupil circle:nth-of-type(2),
-#eye[data-state="confused"] .pupil circle:nth-of-type(3) { opacity: 0.4; }
+#eye[data-state="confused"] .pupil .glow { opacity: 0.4; }
 #eye[data-state="confused"] {
   filter: drop-shadow(0 0 16px rgba(255, 90, 60, 0.55));
 }

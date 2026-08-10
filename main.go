@@ -30,6 +30,8 @@ type Settings struct {
 	Speak        bool    `json:"speak"`
 	Call         bool    `json:"call"`
 	LocalModel   string  `json:"localModel"`
+	EyeDesign    string  `json:"eyeDesign"`
+	PiperVoice   string  `json:"piperVoice"`
 }
 
 func defaultSettings() *Settings {
@@ -45,6 +47,8 @@ func defaultSettings() *Settings {
 		Speak:        true,
 		Call:         true,
 		LocalModel:   "qwen3.5:latest",
+		EyeDesign:    "classic",
+		PiperVoice:   "BT7274",
 	}
 }
 
@@ -222,6 +226,10 @@ func handleTTS(w http.ResponseWriter, r *http.Request) {
 	if engine == "" {
 		engine = s.VoiceMode
 	}
+	voice := req.Voice
+	if voice == "" {
+		voice = s.PiperVoice
+	}
 
 	// Local Piper voice — no API key required.
 	if engine == "browser" {
@@ -230,7 +238,7 @@ func handleTTS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	audio, err := piperTTS(req.Text)
+	audio, err := piperTTS(req.Text, voice)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
 		return
@@ -239,11 +247,23 @@ func handleTTS(w http.ResponseWriter, r *http.Request) {
 	w.Write(audio)
 }
 
-func piperTTS(text string) ([]byte, error) {
+// piperVoices maps a friendly voice key to the bundled Piper model files
+// inside VOICE_DIR. Only these names are accepted (no path traversal).
+var piperVoices = map[string]string{
+	"BT7274":   "BT7274.onnx",
+	"ScorchAI": "ScorchAI.onnx",
+	"PDA":      "PDA.onnx",
+}
+
+func piperTTS(text, voice string) ([]byte, error) {
 	bin := envOr("PIPER_BIN", "piper")
 	voiceDir := envOr("VOICE_DIR", "voices")
-	model := filepath.Join(voiceDir, "BT7274.onnx")
-	config := filepath.Join(voiceDir, "BT7274.onnx.json")
+	modelFile, ok := piperVoices[voice]
+	if !ok {
+		modelFile = piperVoices["BT7274"]
+	}
+	model := filepath.Join(voiceDir, modelFile)
+	config := model + ".json"
 	outFile := filepath.Join(os.TempDir(), "bt_voice.wav")
 
 	_ = os.Remove(outFile)
@@ -303,7 +323,11 @@ func main() {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
-	mux.Handle("/", http.FileServer(http.Dir(envOr("STATIC_DIR", "static"))))
+	fs := http.StripPrefix("/", http.FileServer(http.Dir(envOr("STATIC_DIR", "static"))))
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		fs.ServeHTTP(w, r)
+	}))
 
 	log.Printf("HERMES online on :%s (local Ollama engine)", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {

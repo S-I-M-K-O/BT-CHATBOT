@@ -9,6 +9,7 @@ const closeSettingsBtn = document.getElementById("closeSettingsBtn");
 const eye = document.getElementById("eye");
 const eyeBanner = document.getElementById("eyeBanner");
 const eyeZone = document.getElementById("eyezone");
+eye.setAttribute("data-design", "classic");
 
 const EYE_LABELS = {
   idle: "READY",
@@ -38,11 +39,13 @@ let settings = {
   maxTokens: 1024,
   voice: "",
   voiceMode: "piper",
+  piperVoice: "BT7274",
   pitch: 0.6,
   rate: -0.2,
   volume: 1.0,
   speak: true,
   call: true,
+  eyeDesign: "classic",
 };
 
 let synth = window.speechSynthesis;
@@ -84,13 +87,19 @@ function applySettingsToForm() {
   document.getElementById("s_temp").value = settings.temperature;
   document.getElementById("s_max").value = settings.maxTokens;
   document.getElementById("s_engine").value = settings.voiceMode;
+  if (settings.piperVoice) {
+    const pv = document.getElementById("s_pipervoice");
+    if ([...pv.options].some((o) => o.value === settings.piperVoice)) pv.value = settings.piperVoice;
+  }
   document.getElementById("s_pitch").value = settings.pitch;
   document.getElementById("s_rate").value = settings.rate;
   document.getElementById("s_volume").value = settings.volume;
+  document.getElementById("s_eye").value = settings.eyeDesign || "classic";
   document.getElementById("s_say").checked = settings.speak !== false;
   document.getElementById("s_call").checked = settings.call !== false;
   updateRangeLabels();
   toggleEngine();
+  applyEyeDesign();
   if (settings.voice && synth) {
     const sel = document.getElementById("s_voice");
     if ([...sel.options].some((o) => o.value === settings.voice)) sel.value = settings.voice;
@@ -106,12 +115,18 @@ function updateRangeLabels() {
 function toggleEngine() {
   const engine = document.getElementById("s_engine").value;
   document.getElementById("browserVoiceGroup").classList.toggle("hidden", engine !== "browser");
+  document.getElementById("piperVoiceGroup").classList.toggle("hidden", engine !== "piper");
 }
 
 function testAllBtn() {
   readForm();
   if (settings.voiceMode === "piper") speakServerPiper("[System diagnostic: voice check. Pilot, systems online.]");
   else speak("[System diagnostic: voice check. Pilot, systems online.]", true);
+}
+
+function applyEyeDesign() {
+  const design = settings.eyeDesign || "classic";
+  eye.setAttribute("data-design", design);
 }
 
 function readForm() {
@@ -121,9 +136,11 @@ function readForm() {
   settings.maxTokens = parseInt(document.getElementById("s_max").value, 10) || 1024;
   settings.voiceMode = document.getElementById("s_engine").value;
   settings.voice = document.getElementById("s_voice").value;
+  settings.piperVoice = document.getElementById("s_pipervoice").value || "BT7274";
   settings.pitch = parseFloat(document.getElementById("s_pitch").value) || 1;
   settings.rate = parseFloat(document.getElementById("s_rate").value) || 1;
   settings.volume = parseFloat(document.getElementById("s_volume").value) || 1;
+  settings.eyeDesign = document.getElementById("s_eye").value;
   settings.speak = document.getElementById("s_say").checked;
   settings.call = document.getElementById("s_call").checked;
 }
@@ -131,6 +148,10 @@ function readForm() {
 document.getElementById("settingsBtn").addEventListener("click", () => settingsPanel.classList.remove("hidden"));
 document.getElementById("closeSettingsBtn").addEventListener("click", () => settingsPanel.classList.add("hidden"));
 document.getElementById("s_engine").addEventListener("change", toggleEngine);
+document.getElementById("s_eye").addEventListener("change", () => {
+  settings.eyeDesign = document.getElementById("s_eye").value;
+  applyEyeDesign();
+});
 
 ["s_pitch", "s_rate", "s_volume"].forEach((id) => {
   document.getElementById(id).addEventListener("input", updateRangeLabels);
@@ -270,7 +291,7 @@ async function speak(text, markEye) {
 }
 
 async function speakServerPiper(text) {
-  return speakTTS(text, "piper");
+  return speakTTS(text, "piper", settings.piperVoice);
 }
 
 async function speakTTS(text, engine, voice) {
@@ -444,7 +465,7 @@ function routeSpoken(text) {
     micArmed = true;
     if (!micBusy) {
       micBusy = true;
-      setEye("listening", "YES, PILOT?");
+      setEye("listening", "YES?");
       if (settings.speak !== false) speakAck();
       micBusy = false;
     }
@@ -477,7 +498,7 @@ async function speakAck() {
     const res = await fetch("/api/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: "Yes, Pilot?", engine: settings.voiceMode }),
+      body: JSON.stringify({ text: "Yes?", engine: settings.voiceMode, voice: settings.piperVoice }),
     });
     if (!res.ok) return;
     const blob = await res.blob();
@@ -503,6 +524,13 @@ function toggleMic() {
 }
 
 micBtn.addEventListener("click", toggleMic);
+
+const chatToggle = document.getElementById("chatToggle");
+chatToggle.addEventListener("click", () => {
+  const hidden = document.body.classList.toggle("chat-hidden");
+  chatToggle.textContent = hidden ? "▴ Show chat" : "▾ Hide chat";
+});
+chatToggle.textContent = document.body.classList.contains("chat-hidden") ? "▴ Show chat" : "▾ Hide chat";
 
 fetchSettings().then(() => {
   statusDot.classList.add("online");
