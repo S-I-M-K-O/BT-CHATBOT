@@ -3,22 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BT-7274 — Titan Chatbot</title>
+<title>HERMES — Voice Assistant</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="topbar">
   <div class="brand">
     <span class="status-dot" id="statusDot"></span>
-    <h1>BT-7274</h1>
-    <span class="tag">Vanguard-class Titan</span>
+    <h1>HERMES</h1>
+    <span class="tag">Voice Assistant</span>
   </div>
-  <div class="eyestatus" id="eyeLabel">STANDBY</div>
   <button id="settingsBtn" title="Settings">⚙ Settings</button>
 </header>
 
 <section class="eyezone" id="eyezone">
-  <svg class="eye" id="eye" viewBox="0 0 420 260" aria-label="BT-7274 visor">
+  <svg class="eye" id="eye" viewBox="0 0 420 260" aria-label="HERMES visor">
     <defs>
       <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="#2a3440"/>
@@ -84,7 +83,7 @@
       <circle cx="210" cy="128" r="112" fill="none" stroke="#000" stroke-width="2" opacity="0.5"/>
     </g>
   </svg>
-  <div class="eyebanner" id="eyeBanner">AWAITING INPUT</div>
+  <div class="eyebanner" id="eyeBanner">AWAITING CALL</div>
 </section>
 
 <main id="chat">
@@ -92,7 +91,8 @@
 </main>
 
 <footer class="inputbar">
-  <input id="msgInput" type="text" placeholder="Talk to BT, Pilot..." autocomplete="off">
+  <button id="micBtn" title="Toggle microphone / wake word" class="mic-btn">🎤</button>
+  <input id="msgInput" type="text" placeholder='Say "Hermes" to talk, or type here...' autocomplete="off">
   <button id="sendBtn">Send</button>
 </footer>
 
@@ -104,7 +104,7 @@
 
   <section>
     <h3 class="group">AI Model</h3>
-    <label>Model <input id="s_model" type="text" spellcheck="false"></label>
+    <label>Local Model <input id="s_localmodel" type="text" spellcheck="false"></label>
     <label>System Prompt <textarea id="s_prompt" rows="4"></textarea></label>
     <div class="row">
       <label>Temperature <input id="s_temp" type="number" step="0.1" min="0" max="2"></label>
@@ -117,9 +117,8 @@
     <div class="row">
       <label>Engine
         <select id="s_engine">
-          <option value="piper">BT-7274 (local Piper)</option>
+          <option value="piper">HERMES (local Piper)</option>
           <option value="browser">Browser voice (OS)</option>
-          <option value="server">free.ai TTS (Kokoro)</option>
         </select>
       </label>
     </div>
@@ -140,10 +139,6 @@
       </div>
     </div>
 
-    <div id="serverVoiceGroup" class="hidden">
-      <label>Server Voice <input id="s_servervoice" type="text" placeholder="e.g. am_onyx, af_heart" spellcheck="false"></label>
-    </div>
-
     <button id="testTTSBtn" class="small">Test current voice</button>
   </section>
 
@@ -151,11 +146,12 @@
     <h3 class="group">Sound / speak replies</h3>
     <label class="check"><input id="s_say" type="checkbox"> Speak replies out loud</label>
     <label class="check"><input id="s_auto" type="checkbox"> Auto-scroll chat</label>
+    <label class="check"><input id="s_call" type="checkbox" checked> Answer when called by name ("Hermes")</label>
   </section>
 
   <button id="saveBtn" class="primary">Save settings</button>
   <span id="saveMsg" class="savemsg"></span>
-  <p class="note">BT-7274 (Piper) runs fully locally with the Titanfall 2 voice — no API key needed for speech. Browser engine uses your OS voices with adjustable pitch/rate/volume. Server engine uses free.ai Kokoro TTS. The visor's eye reflects BT's state: thinking, speaking, or confused.</p>
+  <p class="note">HERMES (Piper) runs fully locally — no API key needed for speech. The eye reflects HERMES' state. Toggle 🎤 to listen continuously; HERMES only responds when you say "Hermes" first. Otherwise, type your message.</p>
 </div>
 
 <script src="app.js"></script>
