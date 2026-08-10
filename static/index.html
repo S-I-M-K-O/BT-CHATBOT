@@ -4,9 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HERMES — Voice Assistant</title>
-<link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/style.css?v=6">
 </head>
-<body>
+<body class="chat-hidden">
 <header class="topbar">
   <div class="brand">
     <span class="status-dot" id="statusDot"></span>
@@ -38,53 +39,231 @@
         <stop offset="70%" stop-color="#0a1a26"/>
         <stop offset="100%" stop-color="#123040"/>
       </radialGradient>
-      <clipPath id="lensClip">
-        <ellipse cx="210" cy="128" rx="118" ry="104"/>
-      </clipPath>
+      <linearGradient id="scorchVisor" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#ffc06a"/>
+        <stop offset="100%" stop-color="#cf6a12"/>
+      </linearGradient>
+      <linearGradient id="sentryVisor" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#5dffa2"/>
+        <stop offset="100%" stop-color="#0b8f4e"/>
+      </linearGradient>
+      <linearGradient id="irisVisor" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#d8acff"/>
+        <stop offset="100%" stop-color="#7a3fd6"/>
+      </linearGradient>
+      <linearGradient id="radarVisor" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#8fe3ff"/>
+        <stop offset="100%" stop-color="#1e7fb8"/>
+      </linearGradient>
+      <linearGradient id="mantisVisor" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#ff9a82"/>
+        <stop offset="100%" stop-color="#c2342a"/>
+      </linearGradient>
     </defs>
 
-    <!-- armor housing -->
-    <path d="M70 30 L350 30 L398 128 L350 226 L70 226 L22 128 Z"
-          fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="4"/>
-    <path d="M66 36 L354 36 L398 128 L354 220 L66 220 L22 128 Z"
-          fill="none" stroke="#0a0e14" stroke-width="8" opacity="0.6"/>
-
-    <!-- housing bolts -->
-    <circle cx="48" cy="52" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-    <circle cx="372" cy="52" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-    <circle cx="48" cy="204" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-    <circle cx="372" cy="204" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-    <circle cx="210" cy="20" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-    <circle cx="210" cy="236" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-
-    <!-- movable eye core -->
     <g class="eye-core" id="eyeCore">
-      <!-- socket -->
-      <circle cx="210" cy="128" r="112" fill="#06080c" stroke="#0a0e14" stroke-width="6"/>
-      <circle cx="210" cy="128" r="104" fill="url(#irisGrad)" stroke="#1b2a38" stroke-width="2"/>
 
-      <!-- rotating mechanical shutters -->
-      <g class="shutters" id="shutters">
-        <circle cx="210" cy="128" r="96" fill="none" stroke="#1e3344" stroke-width="14"
-                stroke-dasharray="6 22" stroke-linecap="round"/>
-        <circle cx="210" cy="128" r="78" fill="none" stroke="#16222e" stroke-width="6"
-                stroke-dasharray="2 14" stroke-linecap="round"/>
+      <!-- ===== DESIGN: classic (BT-7274, original round mechanical eye) ===== -->
+      <g class="design" data-el="classic">
+        <!-- armor housing -->
+        <path d="M70 30 L350 30 L398 128 L350 226 L70 226 L22 128 Z"
+              fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="4"/>
+        <path d="M66 36 L354 36 L398 128 L354 220 L66 220 L22 128 Z"
+              fill="none" stroke="#0a0e14" stroke-width="8" opacity="0.6"/>
+
+        <circle cx="48" cy="52" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="372" cy="52" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="48" cy="204" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="372" cy="204" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="210" cy="20" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="210" cy="236" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <g><line x1="40" y1="108" x2="44" y2="105" stroke="#3a4552" stroke-width="3" stroke-linecap="round"/>
+            <line x1="40" y1="120" x2="44" y2="119" stroke="#3a4552" stroke-width="3" stroke-linecap="round"/>
+            <line x1="380" y1="108" x2="376" y2="105" stroke="#3a4552" stroke-width="3" stroke-linecap="round"/>
+            <line x1="380" y1="120" x2="376" y2="119" stroke="#3a4552" stroke-width="3" stroke-linecap="round"/></g>
+
+        <circle cx="210" cy="128" r="112" fill="#06080c" stroke="#0a0e14" stroke-width="6"/>
+        <circle cx="210" cy="128" r="104" fill="url(#irisGrad)" stroke="#1b2a38" stroke-width="2"/>
+
+        <g class="shutters">
+          <circle cx="210" cy="128" r="96" fill="none" stroke="#1e3344" stroke-width="14"
+                  stroke-dasharray="6 22" stroke-linecap="round"/>
+          <circle cx="210" cy="128" r="78" fill="none" stroke="#16222e" stroke-width="6"
+                  stroke-dasharray="2 14" stroke-linecap="round"/>
+        </g>
+
+        <g class="pupil">
+          <circle cx="210" cy="128" r="62" fill="#08141c" stroke="#2a3f52" stroke-width="2"/>
+          <circle cx="210" cy="128" r="40" fill="url(#glowGrad)"/>
+          <circle cx="210" cy="128" r="26" fill="#0b1c26" stroke="#123040" stroke-width="3"/>
+          <circle cx="210" cy="128" r="12" class="glow" fill="#9bdcff" opacity="0.95"/>
+          <circle cx="204" cy="122" r="4" class="glow" fill="#ffffff" opacity="0.9"/>
+        </g>
+
+        <circle cx="210" cy="128" r="112" fill="none" stroke="#000" stroke-width="2" opacity="0.5"/>
       </g>
 
-      <!-- lens / pupil (moves to look around) -->
-      <g class="pupil" id="pupil">
-        <circle cx="210" cy="128" r="62" fill="#08141c" stroke="#2a3f52" stroke-width="2"/>
-        <circle cx="210" cy="128" r="40" fill="url(#glowGrad)"/>
-        <circle cx="210" cy="128" r="26" fill="#0b1c26" stroke="#123040" stroke-width="3"/>
-        <circle cx="210" cy="128" r="12" fill="#9bdcff" opacity="0.95"/>
-        <circle cx="204" cy="122" r="4" fill="#ffffff" opacity="0.9"/>
+      <!-- ===== DESIGN: scorch (heavy boxy furnace visor, amber) ===== -->
+      <g class="design" data-el="scorch">
+        <!-- squat boxy housing -->
+        <path d="M54 50 L366 50 L404 128 L366 206 L54 206 L16 128 Z"
+              fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="5"/>
+        <path d="M60 58 L360 58 L394 128 L360 198 L60 198 L26 128 Z"
+              fill="none" stroke="#0a0e14" stroke-width="7" opacity="0.55"/>
+
+        <!-- heavy armor plates -->
+        <path d="M90 50 L120 50 L120 90 Z" fill="#171d26"/>
+        <path d="M330 50 L300 50 L300 90 Z" fill="#171d26"/>
+        <path d="M90 206 L120 206 L120 166 Z" fill="#171d26"/>
+        <path d="M330 206 L300 206 L300 166 Z" fill="#171d26"/>
+        <circle cx="210" cy="40" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="210" cy="216" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+
+        <!-- furnace grille visor -->
+        <rect x="78" y="106" width="264" height="44" rx="12" fill="#080400" stroke="#0a0e14" stroke-width="6"/>
+        <g class="pupil">
+          <rect x="90" y="110" width="240" height="36" rx="10" fill="url(#scorchVisor)"/>
+          <rect x="100" y="114" width="220" height="28" rx="8" fill="#1a1204"/>
+          <g stroke="#0a0500" stroke-width="4">
+            <line x1="140" y1="114" x2="140" y2="142"/>
+            <line x1="180" y1="114" x2="180" y2="142"/>
+            <line x1="240" y1="114" x2="240" y2="142"/>
+            <line x1="280" y1="114" x2="280" y2="142"/>
+          </g>
+          <line x1="96" y1="128" x2="324" y2="128" class="scan" stroke="#ffd08a" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="210" cy="128" r="12" class="glow" fill="#fff0d0"/>
+        </g>
       </g>
 
-      <circle cx="210" cy="128" r="112" fill="none" stroke="#000" stroke-width="2" opacity="0.5"/>
+      <!-- ===== DESIGN: sentry (hexagonal tactical chassis, crosshair visor, emerald) ===== -->
+      <g class="design" data-el="sentry">
+        <!-- octagonal battle armor -->
+        <path d="M210 20 L336 70 L398 128 L336 186 L210 240 L84 186 L22 128 L84 70 Z"
+              fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="4"/>
+        <path d="M210 32 L324 78 L382 128 L324 178 L210 228 L96 178 L38 128 L96 78 Z"
+              fill="none" stroke="#0a0e14" stroke-width="7" opacity="0.55"/>
+
+        <!-- center mount keyway -->
+        <path d="M166 26 L210 18 L254 26 M166 234 L210 242 L254 234" stroke="#232a33" stroke-width="3"/>
+
+        <!-- rivets -->
+        <circle cx="56" cy="110" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="364" cy="110" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="56" cy="146" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="364" cy="146" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+
+        <!-- visor socket -->
+        <rect x="92" y="106" width="236" height="44" rx="10" fill="#06090d" stroke="#0a0e14" stroke-width="6"/>
+        <g class="pupil">
+          <rect x="104" y="112" width="212" height="32" rx="8" fill="url(#sentryVisor)"/>
+          <rect x="110" y="118" width="200" height="20" rx="6" fill="#05200e"/>
+          <!-- targeting reticle -->
+          <line x1="210" y1="118" x2="210" y2="138" class="scan" stroke="#b6ffd6" stroke-width="2"/>
+          <line x1="110" y1="128" x2="310" y2="128" class="scan" stroke="#8affc4" stroke-width="2"/>
+          <circle cx="210" cy="128" r="7" class="glow" fill="#eafff2"/>
+        </g>
+      </g>
+
+      <!-- ===== DESIGN: iris (rotating mechanical aperture blades, violet) ===== -->
+      <g class="design" data-el="iris">
+        <!-- circular armor ring -->
+        <circle cx="210" cy="128" r="122" fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="4"/>
+        <circle cx="210" cy="128" r="112" fill="#06090d" stroke="#0a0e14" stroke-width="6"/>
+        <circle cx="210" cy="128" r="104" fill="#0b1522" stroke="#1b2a38" stroke-width="2"/>
+
+        <!-- rotating eight-blade mechanical iris -->
+        <g class="shutters">
+          <g transform="translate(210 128)">
+            <g fill="#131d2c" stroke="#0a0e14" stroke-width="2">
+              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z"/>
+              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(45)"/>
+              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(90)"/>
+              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(135)"/>
+              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(180)"/>
+              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(225)"/>
+              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(270)"/>
+              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(315)"/>
+            </g>
+          </g>
+          <circle cx="210" cy="128" r="28" fill="#070b12" stroke="#0a0e14" stroke-width="4"/>
+        </g>
+
+        <g class="pupil">
+          <circle cx="210" cy="128" r="42" fill="#0c1020" stroke="#1b2a38" stroke-width="2"/>
+          <circle cx="210" cy="128" r="32" fill="url(#irisVisor)"/>
+          <circle cx="210" cy="128" r="20" fill="#0a0a14"/>
+          <circle cx="210" cy="128" r="10" class="glow" fill="#ecd9ff"/>
+        </g>
+
+        <circle cx="210" cy="128" r="122" fill="none" stroke="#000" stroke-width="2" opacity="0.5"/>
+      </g>
+
+      <!-- ===== DESIGN: radar (directional dish, rotating scan sweep, cyan) ===== -->
+      <g class="design" data-el="radar">
+        <!-- diamond housing -->
+        <path d="M210 18 L374 92 L374 164 L210 238 L46 164 L46 92 Z"
+              fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="4"/>
+        <path d="M210 34 L360 98 L360 158 L210 222 L60 158 L60 98 Z"
+              fill="none" stroke="#0a0e14" stroke-width="6" opacity="0.55"/>
+        <path d="M98 60 L128 84 M322 60 L292 84 M98 196 L128 172 M322 196 L292 172"
+              stroke="#232a33" stroke-width="3"/>
+
+        <!-- rotating radar sweep -->
+        <circle cx="210" cy="128" r="82" fill="#06090d" stroke="#0a0e14" stroke-width="6"/>
+        <g class="shutters">
+          <path d="M210 128 L158 76 A74 74 0 0 0 262 76 Z" fill="url(#radarVisor)" opacity="0.55"/>
+        </g>
+
+        <!-- scope with range rings + crosshair -->
+        <g class="pupil">
+          <circle cx="210" cy="128" r="74" fill="#081018" stroke="#1b2a38" stroke-width="2"/>
+          <circle cx="210" cy="128" r="54" fill="none" stroke="#16405a" stroke-width="2"/>
+          <circle cx="210" cy="128" r="34" fill="none" stroke="#16405a" stroke-width="2"/>
+          <line x1="210" y1="54" x2="210" y2="202" stroke="#16405a" stroke-width="2"/>
+          <line x1="136" y1="128" x2="284" y2="128" stroke="#16405a" stroke-width="2"/>
+          <circle cx="210" cy="128" r="9" class="glow" fill="#e0f9ff"/>
+        </g>
+      </g>
+
+      <!-- ===== DESIGN: mantis (tri-lens tracking array, crimson) ===== -->
+      <g class="design" data-el="mantis">
+        <!-- angular armor housing -->
+        <path d="M80 30 L340 30 L404 104 L404 152 L340 230 L80 230 L16 152 L16 104 Z"
+              fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="4"/>
+        <path d="M86 40 L334 40 L392 108 L392 148 L334 220 L86 220 L28 148 L28 108 Z"
+              fill="none" stroke="#0a0e14" stroke-width="6" opacity="0.55"/>
+
+        <!-- top sight diodes + anchor bolts -->
+        <circle cx="120" cy="50" r="5" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="300" cy="50" r="5" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="62" cy="98" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="358" cy="98" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="62" cy="158" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <circle cx="358" cy="158" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+
+        <!-- optic rail mounting three lenses -->
+        <rect x="86" y="112" width="248" height="32" rx="10" fill="#06090d" stroke="#0a0e14" stroke-width="6"/>
+        <g class="pupil">
+          <circle cx="128" cy="128" r="40" fill="#0c1020" stroke="#1b2a38" stroke-width="2"/>
+          <circle cx="128" cy="128" r="30" fill="url(#mantisVisor)" opacity="0.9"/>
+          <circle cx="128" cy="128" r="13" class="glow" fill="#ffc2b3"/>
+          <circle cx="210" cy="128" r="52" fill="#0c1020" stroke="#1b2a38" stroke-width="2"/>
+          <circle cx="210" cy="128" r="40" fill="url(#mantisVisor)" opacity="0.9"/>
+          <circle cx="210" cy="128" r="18" class="glow" fill="#ffd9cc"/>
+          <circle cx="292" cy="128" r="40" fill="#0c1020" stroke="#1b2a38" stroke-width="2"/>
+          <circle cx="292" cy="128" r="30" fill="url(#mantisVisor)" opacity="0.9"/>
+          <circle cx="292" cy="128" r="13" class="glow" fill="#ffc2b3"/>
+        </g>
+      </g>
+
     </g>
   </svg>
   <div class="eyebanner" id="eyeBanner">AWAITING CALL</div>
 </section>
+
+<div class="chatbar">
+  <button id="chatToggle" title="Show / hide chat">▴ Show chat</button>
+</div>
 
 <main id="chat">
   <div id="messages"></div>
@@ -113,12 +292,36 @@
   </section>
 
   <section>
+    <h3 class="group">Appearance</h3>
+    <label>Eye Design
+      <select id="s_eye">
+        <option value="classic">BT-7274</option>
+        <option value="scorch">Scorch</option>
+        <option value="sentry">Sentry</option>
+        <option value="iris">Iris</option>
+        <option value="radar">Radar</option>
+        <option value="mantis">Mantis</option>
+      </select>
+    </label>
+  </section>
+
+  <section>
     <h3 class="group">Voice</h3>
     <div class="row">
       <label>Engine
         <select id="s_engine">
           <option value="piper">HERMES (local Piper)</option>
           <option value="browser">Browser voice (OS)</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="piperVoiceGroup">
+      <label>Piper Voice
+        <select id="s_pipervoice">
+          <option value="BT7274">BT-7274</option>
+          <option value="ScorchAI">Scorch AI</option>
+          <option value="PDA">Subnautica PDA</option>
         </select>
       </label>
     </div>
@@ -154,6 +357,6 @@
   <p class="note">HERMES (Piper) runs fully locally — no API key needed for speech. The eye reflects HERMES' state. Toggle 🎤 to listen continuously; HERMES only responds when you say "Hermes" first. Otherwise, type your message.</p>
 </div>
 
-<script src="app.js"></script>
+<script src="/app.js?v=5"></script>
 </body>
 </html>

@@ -2,12 +2,14 @@
   "systemPrompt": "You are HERMES, a voice assistant with a calm, measured, slightly robotic monotone. Keep your answers concise and tactical.  Use phrases like 'Copy that' and 'Understood' sparingly. Be precise, helpful, and a little dry. You never mention being an AI language model.",
   "temperature": 0.7,
   "maxTokens": 1024,
-  "voice": "Samantha",
+  "voice": "Anna",
   "voiceMode": "piper",
-  "pitch": 0.6,
-  "rate": 0.1,
+  "pitch": 0.7,
+  "rate": 1.1,
   "volume": 1,
   "speak": true,
   "call": true,
-  "localModel": "qwen3.5"
+  "localModel": "qwen3.5",
+  "eyeDesign": "classic",
+  "piperVoice": "BT7274"
 }
