@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BT-7274 — Titan Chatbot</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="status-dot" id="statusDot"></span>
+    <h1>BT-7274</h1>
+    <span class="tag">Vanguard-class Titan</span>
+  </div>
+  <div class="eyestatus" id="eyeLabel">STANDBY</div>
+  <button id="settingsBtn" title="Settings">⚙ Settings</button>
+</header>
+
+<section class="eyezone" id="eyezone">
+  <svg class="eye" id="eye" viewBox="0 0 420 260" aria-label="BT-7274 visor">
+    <defs>
+      <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#2a3440"/>
+        <stop offset="50%" stop-color="#171d26"/>
+        <stop offset="100%" stop-color="#0e131b"/>
+      </linearGradient>
+      <linearGradient id="metalEdge" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#4d5a68"/>
+        <stop offset="100%" stop-color="#232a33"/>
+      </linearGradient>
+      <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#7fd4ff" stop-opacity="0.9"/>
+        <stop offset="40%" stop-color="#2ea8e6" stop-opacity="0.6"/>
+        <stop offset="100%" stop-color="#2ea8e6" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="irisGrad" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#051018"/>
+        <stop offset="70%" stop-color="#0a1a26"/>
+        <stop offset="100%" stop-color="#123040"/>
+      </radialGradient>
+      <clipPath id="lensClip">
+        <ellipse cx="210" cy="128" rx="118" ry="104"/>
+      </clipPath>
+    </defs>
+
+    <!-- armor housing -->
+    <path d="M70 30 L350 30 L398 128 L350 226 L70 226 L22 128 Z"
+          fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="4"/>
+    <path d="M66 36 L354 36 L398 128 L354 220 L66 220 L22 128 Z"
+          fill="none" stroke="#0a0e14" stroke-width="8" opacity="0.6"/>
+
+    <!-- housing bolts -->
+    <circle cx="48" cy="52" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+    <circle cx="372" cy="52" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+    <circle cx="48" cy="204" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+    <circle cx="372" cy="204" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+    <circle cx="210" cy="20" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+    <circle cx="210" cy="236" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+
+    <!-- movable eye core -->
+    <g class="eye-core" id="eyeCore">
+      <!-- socket -->
+      <circle cx="210" cy="128" r="112" fill="#06080c" stroke="#0a0e14" stroke-width="6"/>
+      <circle cx="210" cy="128" r="104" fill="url(#irisGrad)" stroke="#1b2a38" stroke-width="2"/>
+
+      <!-- rotating mechanical shutters -->
+      <g class="shutters" id="shutters">
+        <circle cx="210" cy="128" r="96" fill="none" stroke="#1e3344" stroke-width="14"
+                stroke-dasharray="6 22" stroke-linecap="round"/>
+        <circle cx="210" cy="128" r="78" fill="none" stroke="#16222e" stroke-width="6"
+                stroke-dasharray="2 14" stroke-linecap="round"/>
+      </g>
+
+      <!-- lens / pupil (moves to look around) -->
+      <g class="pupil" id="pupil">
+        <circle cx="210" cy="128" r="62" fill="#08141c" stroke="#2a3f52" stroke-width="2"/>
+        <circle cx="210" cy="128" r="40" fill="url(#glowGrad)"/>
+        <circle cx="210" cy="128" r="26" fill="#0b1c26" stroke="#123040" stroke-width="3"/>
+        <circle cx="210" cy="128" r="12" fill="#9bdcff" opacity="0.95"/>
+        <circle cx="204" cy="122" r="4" fill="#ffffff" opacity="0.9"/>
+      </g>
+
+      <circle cx="210" cy="128" r="112" fill="none" stroke="#000" stroke-width="2" opacity="0.5"/>
+    </g>
+  </svg>
+  <div class="eyebanner" id="eyeBanner">AWAITING INPUT</div>
+</section>
+
+<main id="chat">
+  <div id="messages"></div>
+</main>
+
+<footer class="inputbar">
+  <input id="msgInput" type="text" placeholder="Talk to BT, Pilot..." autocomplete="off">
+  <button id="sendBtn">Send</button>
+</footer>
+
+<div id="settingsPanel" class="settings hidden">
+  <div class="settings-header">
+    <h2>Settings</h2>
+    <button id="closeSettingsBtn" title="Close">✕</button>
+  </div>
+
+  <section>
+    <h3 class="group">AI Model</h3>
+    <label>Model <input id="s_model" type="text" spellcheck="false"></label>
+    <label>System Prompt <textarea id="s_prompt" rows="4"></textarea></label>
+    <div class="row">
+      <label>Temperature <input id="s_temp" type="number" step="0.1" min="0" max="2"></label>
+      <label>Max Tokens <input id="s_max" type="number" step="16" min="16" max="8192"></label>
+    </div>
+  </section>
+
+  <section>
+    <h3 class="group">Voice</h3>
+    <div class="row">
+      <label>Engine
+        <select id="s_engine">
+          <option value="piper">BT-7274 (local Piper)</option>
+          <option value="browser">Browser voice (OS)</option>
+          <option value="server">free.ai TTS (Kokoro)</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="browserVoiceGroup">
+      <label>Browser Voice <select id="s_voice"></select></label>
+      <div class="row">
+        <label>Pitch <input id="s_pitch" type="range" min="0" max="2" step="0.1"></label>
+        <span id="s_pitch_val" class="val"></span>
+      </div>
+      <div class="row">
+        <label>Rate <input id="s_rate" type="range" min="0.1" max="3" step="0.1"></label>
+        <span id="s_rate_val" class="val"></span>
+      </div>
+      <div class="row">
+        <label>Volume <input id="s_volume" type="range" min="0" max="1" step="0.05"></label>
+        <span id="s_vol_val" class="val"></span>
+      </div>
+    </div>
+
+    <div id="serverVoiceGroup" class="hidden">
+      <label>Server Voice <input id="s_servervoice" type="text" placeholder="e.g. am_onyx, af_heart" spellcheck="false"></label>
+    </div>
+
+    <button id="testTTSBtn" class="small">Test current voice</button>
+  </section>
+
+  <section>
+    <h3 class="group">Sound / speak replies</h3>
+    <label class="check"><input id="s_say" type="checkbox"> Speak replies out loud</label>
+    <label class="check"><input id="s_auto" type="checkbox"> Auto-scroll chat</label>
+  </section>
+
+  <button id="saveBtn" class="primary">Save settings</button>
+  <span id="saveMsg" class="savemsg"></span>
+  <p class="note">BT-7274 (Piper) runs fully locally with the Titanfall 2 voice — no API key needed for speech. Browser engine uses your OS voices with adjustable pitch/rate/volume. Server engine uses free.ai Kokoro TTS. The visor's eye reflects BT's state: thinking, speaking, or confused.</p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
