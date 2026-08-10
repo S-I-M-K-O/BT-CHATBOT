@@ -67,6 +67,20 @@ html, body {
   box-shadow: 0 0 8px #30a46c;
 }
 
+.mic-btn {
+  font-size: 16px;
+  padding: 8px 12px;
+  border-radius: 50%;
+  min-width: 42px;
+}
+
+.mic-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #10151c;
+  box-shadow: 0 0 10px rgba(255, 106, 0, 0.6);
+}
+
 .eyestatus {
   font-family: monospace;
   font-size: 12px;

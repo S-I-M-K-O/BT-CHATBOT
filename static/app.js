@@ -1,18 +1,18 @@
 const messagesEl = document.getElementById("messages");
 const input = document.getElementById("msgInput");
 const sendBtn = document.getElementById("sendBtn");
+const micBtn = document.getElementById("micBtn");
 const statusDot = document.getElementById("statusDot");
 const settingsPanel = document.getElementById("settingsPanel");
 const settingsBtn = document.getElementById("settingsBtn");
 const closeSettingsBtn = document.getElementById("closeSettingsBtn");
 const eye = document.getElementById("eye");
-const eyeLabel = document.getElementById("eyeLabel");
 const eyeBanner = document.getElementById("eyeBanner");
 const eyeZone = document.getElementById("eyezone");
 
 const EYE_LABELS = {
-  idle: "STANDBY",
-  listening: "AWAITING INPUT",
+  idle: "READY",
+  listening: "AWAITING CALL",
   thinking: "PROCESSING",
   speaking: "SPEAKING",
   confused: "UNCERTAIN",
@@ -25,20 +25,14 @@ function setEye(state, banner) {
   eyeState = state;
   eye.setAttribute("data-state", state);
   eyeZone.setAttribute("data-state", state);
-  const label = EYE_LABELS[state] || "STANDBY";
-  if (banner) {
-    eyeLabel.textContent = banner.toUpperCase();
-    eyeBanner.textContent = banner.toUpperCase();
-  } else {
-    eyeLabel.textContent = label;
-    eyeBanner.textContent = label;
-  }
+  const label = EYE_LABELS[state] || "READY";
+  eyeBanner.textContent = (banner || label).toUpperCase();
 }
 
 const history = [];
 
 let settings = {
-  model: "qwen7b",
+  localModel: "qwen3.5:latest",
   systemPrompt: "",
   temperature: 0.7,
   maxTokens: 1024,
@@ -47,8 +41,8 @@ let settings = {
   pitch: 0.6,
   rate: -0.2,
   volume: 1.0,
-  serverVoice: "am_onyx",
   speak: true,
+  call: true,
 };
 
 let synth = window.speechSynthesis;
@@ -85,7 +79,7 @@ async function fetchSettings() {
 
 function applySettingsToForm() {
   const id = (el) => (document.getElementById(el).value = settings[el.replace("s_", "")]);
-  document.getElementById("s_model").value = settings.model;
+  document.getElementById("s_localmodel").value = settings.localModel || "qwen3.5:latest";
   document.getElementById("s_prompt").value = settings.systemPrompt;
   document.getElementById("s_temp").value = settings.temperature;
   document.getElementById("s_max").value = settings.maxTokens;
@@ -93,8 +87,8 @@ function applySettingsToForm() {
   document.getElementById("s_pitch").value = settings.pitch;
   document.getElementById("s_rate").value = settings.rate;
   document.getElementById("s_volume").value = settings.volume;
-  document.getElementById("s_servervoice").value = settings.serverVoice;
   document.getElementById("s_say").checked = settings.speak !== false;
+  document.getElementById("s_call").checked = settings.call !== false;
   updateRangeLabels();
   toggleEngine();
   if (settings.voice && synth) {
@@ -112,18 +106,16 @@ function updateRangeLabels() {
 function toggleEngine() {
   const engine = document.getElementById("s_engine").value;
   document.getElementById("browserVoiceGroup").classList.toggle("hidden", engine !== "browser");
-  document.getElementById("serverVoiceGroup").classList.toggle("hidden", engine !== "server");
 }
 
 function testAllBtn() {
   readForm();
-  if (settings.voiceMode === "server") speakServer("[System diagnostic: voice check. Pilot, systems online.]");
-  else if (settings.voiceMode === "piper") speakServerPiper("[System diagnostic: voice check. Pilot, systems online.]");
+  if (settings.voiceMode === "piper") speakServerPiper("[System diagnostic: voice check. Pilot, systems online.]");
   else speak("[System diagnostic: voice check. Pilot, systems online.]", true);
 }
 
 function readForm() {
-  settings.model = document.getElementById("s_model").value.trim() || "qwen7b";
+  settings.localModel = document.getElementById("s_localmodel").value.trim() || "qwen3.5:latest";
   settings.systemPrompt = document.getElementById("s_prompt").value;
   settings.temperature = parseFloat(document.getElementById("s_temp").value) || 0.7;
   settings.maxTokens = parseInt(document.getElementById("s_max").value, 10) || 1024;
@@ -132,8 +124,8 @@ function readForm() {
   settings.pitch = parseFloat(document.getElementById("s_pitch").value) || 1;
   settings.rate = parseFloat(document.getElementById("s_rate").value) || 1;
   settings.volume = parseFloat(document.getElementById("s_volume").value) || 1;
-  settings.serverVoice = document.getElementById("s_servervoice").value.trim();
   settings.speak = document.getElementById("s_say").checked;
+  settings.call = document.getElementById("s_call").checked;
 }
 
 document.getElementById("settingsBtn").addEventListener("click", () => settingsPanel.classList.remove("hidden"));
@@ -171,10 +163,10 @@ function scrollBottom() {
   chat.scrollTop = chat.scrollHeight;
 }
 
-async function send() {
-  const text = input.value.trim();
+async function send(spokenText) {
+  const text = (spokenText || input.value).trim();
   if (!text) return;
-  input.value = "";
+  if (!spokenText) input.value = "";
   history.push({ role: "user", content: text });
   addMsg("user", text);
 
@@ -241,17 +233,16 @@ async function send() {
   scrollBottom();
 
   if (settings.speak !== false && full) {
-    if (settings.voiceMode === "server") await speakServer(full);
-    else if (settings.voiceMode === "piper") await speakServerPiper(full);
+    if (settings.voiceMode === "piper") await speakServerPiper(full);
     else speak(full, true);
   } else {
-    setEye("idle");
+    setEye(micOn ? "listening" : "idle");
   }
 }
 
 async function speak(text, markEye) {
   if (!synth) {
-    if (markEye) setEye("idle");
+    if (markEye) setEye(micOn ? "listening" : "idle");
     return;
   }
   synth.cancel();
@@ -264,15 +255,18 @@ async function speak(text, markEye) {
   u.rate = parseFloat(settings.rate) || 1;
   u.volume = parseFloat(settings.volume) || 1;
   if (markEye) {
+    if (micOn) pauseMic();
     setEye("speaking");
-    u.onend = () => setEye("idle");
-    u.onerror = () => setEye("idle");
+    u.onend = () => {
+      setEye(micOn ? "listening" : "idle");
+      if (micWantOn && !micOn) startMic();
+    };
+    u.onerror = () => {
+      setEye(micOn ? "listening" : "idle");
+      if (micWantOn && !micOn) startMic();
+    };
   }
   synth.speak(u);
-}
-
-async function speakServer(text) {
-  return speakTTS(text, "server", settings.serverVoice);
 }
 
 async function speakServerPiper(text) {
@@ -282,40 +276,240 @@ async function speakServerPiper(text) {
 async function speakTTS(text, engine, voice) {
   try {
     setEye("speaking", "SPEAKING");
+    const wasListening = micOn;
+    if (micOn) pauseMic();
     const res = await fetch("/api/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, voice, engine }),
     });
     if (!res.ok) {
-      setEye("confused", res.status === 503 ? "VOICE OFFLINE" : "VOICE FAILED");
+      setEye(wasListening ? "listening" : "confused", res.status === 503 ? "VOICE OFFLINE" : "VOICE FAILED");
+      if (micWantOn && !micOn) startMic();
       return;
     }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
-    audio.play();
-    audio.onended = () => {
+    audio.volume = parseFloat(settings.volume) || 1;
+    audio.play().catch(() => {
+      // autoplay blocked; retry once after a microtask / gesture warmup
+      primeAudio();
+      audio.play().catch(() => {});
+    });
+    const done = () => {
       URL.revokeObjectURL(url);
-      setEye("idle");
+      setEye(wasListening ? "listening" : "idle");
+      if (micWantOn && !micOn) startMic();
     };
-    audio.onerror = () => setEye("idle");
+    audio.onended = done;
+    audio.onerror = done;
   } catch (e) {
     console.warn("tts failed", e);
-    setEye("idle");
+    setEye(micOn ? "listening" : "idle");
+    if (micWantOn && !micOn) startMic();
   }
 }
 
-sendBtn.addEventListener("click", send);
+sendBtn.addEventListener("click", () => send());
 input.addEventListener("keydown", (e) => {
-  setEye("listening");
   if (e.key === "Enter") send();
 });
-input.addEventListener("focus", () => setEye("listening"));
-input.addEventListener("blur", () => {
-  if (eyeState === "listening") setEye("idle");
+input.addEventListener("focus", () => {
+  if (!micOn) setEye("listening");
 });
+input.addEventListener("blur", () => {
+  if (!micOn && eyeState === "listening") setEye("idle");
+});
+
+// ---------- wake-word microphone ----------
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+let micOn = false;
+let micWantOn = false;
+let micArmed = false;
+let micBusy = false;
+let recognition = null;
+let audioUnlocked = false;
+
+function micSupported() {
+  return !!SR;
+}
+
+function primeAudio() {
+  if (audioUnlocked) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  ctx.resume();
+  const src = ctx.createOscillator?.() || ctx.createGain();
+  if (src.start) src.start();
+  if (src.stop) src.stop(0.01);
+  if (ctx.close) ctx.close().catch(() => {});
+  audioUnlocked = true;
+}
+
+document.addEventListener("pointerdown", primeAudio, { capture: true });
+document.addEventListener("keydown", primeAudio, { capture: true });
+
+function startMic() {
+  if (!SR || recognition) return;
+  micOn = true;
+  micBtn.classList.add("active");
+  recognition = new SR();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = navigator.language || "en-US";
+
+  recognition.onresult = (event) => {
+    let text = "";
+    let isFinal = false;
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const res = event.results[i];
+      if (res.isFinal) isFinal = true;
+      text += res[0].transcript;
+    }
+    text = text.trim();
+    if (!text) return;
+    input.value = text;
+    handleTranscript(text, isFinal);
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+      stopMic();
+      setEye("error", "MIC BLOCKED");
+    } else if (e.error === "no-speech") {
+      // ignore; Chrome throws this constantly in continuous mode
+    } else {
+      console.warn("SR error:", e.error);
+    }
+  };
+
+  recognition.onend = () => {
+    recognition = null;
+    if (micOn) startMic();
+  };
+
+  try {
+    recognition.start();
+  } catch (e) {
+    console.warn("SR start failed:", e);
+    recognition = null;
+    micOn = false;
+    micBtn.classList.remove("active");
+  }
+}
+
+function stopMic() {
+  micOn = false;
+  micArmed = false;
+  micBtn.classList.remove("active");
+  if (recognition) {
+    recognition.onend = null;
+    try {
+      recognition.abort();
+    } catch (e) {}
+    recognition = null;
+  }
+}
+
+function pauseMic() {
+  if (recognition) {
+    recognition.onend = null;
+    try {
+      recognition.abort();
+    } catch (e) {}
+    recognition = null;
+  }
+  micOn = false;
+  micArmed = false;
+}
+
+function handleTranscript(text, isFinal) {
+  input.value = text;
+  if (isFinal) sendSpoken(text, true);
+}
+
+function routeSpoken(text) {
+  const lower = text.toLowerCase();
+  const wakeAt = lower.indexOf("hermes");
+
+  if (!settings.call) {
+    return true; // send as-is
+  }
+
+  if (wakeAt >= 0) {
+    const after = text.slice(wakeAt + "hermes".length).trim();
+    if (after) return after;
+    micArmed = true;
+    if (!micBusy) {
+      micBusy = true;
+      setEye("listening", "YES, PILOT?");
+      if (settings.speak !== false) speakAck();
+      micBusy = false;
+    }
+    return undefined;
+  }
+
+  if (micArmed) {
+    micArmed = false;
+    return text;
+  }
+  return undefined;
+}
+
+function sendSpoken(text, checkWake) {
+  let payload = text;
+  if (checkWake) payload = routeSpoken(text);
+  if (payload === undefined || payload === true) {
+    if (payload === true) send(text.trim());
+    return;
+  }
+  const clean = payload.replace(/[.!?,]+$/, "").trim();
+  if (clean) {
+    input.value = "";
+    send(clean);
+  }
+}
+
+async function speakAck() {
+  try {
+    const res = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: "Yes, Pilot?", engine: settings.voiceMode }),
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.volume = parseFloat(settings.volume) || 1;
+    audio.play().catch(() => {});
+    audio.onended = () => URL.revokeObjectURL(url);
+  } catch (e) {}
+}
+
+function toggleMic() {
+  if (micOn) {
+    micWantOn = false;
+    stopMic();
+    setEye("idle");
+  } else {
+    micWantOn = true;
+    primeAudio();
+    startMic();
+    setEye("listening");
+  }
+}
+
+micBtn.addEventListener("click", toggleMic);
 
 fetchSettings().then(() => {
   statusDot.classList.add("online");
+  if (micSupported()) {
+    micBtn.title = "Click to start always-on listening (say \u201CHermes\u201D first)";
+  } else {
+    micBtn.style.display = "none";
+    micBtn.disabled = true;
+  }
 });

@@ -6,6 +6,8 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - FREEAI_API_KEY=${FREEAI_API_KEY}
+      - OLLAMA_BASE=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/app/data
