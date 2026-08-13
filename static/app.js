@@ -184,6 +184,53 @@ function scrollBottom() {
   chat.scrollTop = chat.scrollHeight;
 }
 
+function pictureWindow() {
+  if (window.pictureWin && !window.pictureWin.closed) {
+    const grid = window.pictureWin.document.getElementById("grid");
+    if (grid) grid.innerHTML = "";
+    const cap = window.pictureWin.document.getElementById("caption");
+    if (cap) cap.remove();
+    window.pictureWin.focus();
+    return window.pictureWin;
+  }
+  const win = window.open("", "hermes_pictures", "width=960,height=720,left=120,top=80");
+  if (!win) return null;
+  win.document.open();
+  win.document.write(
+    '<!doctype html><html><head><meta charset="utf-8">' +
+      '<title>HERMES - Pictures</title>' +
+      "<style>body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;margin:0;padding:24px}" +
+      "h1{color:#2ea8e6;font-size:20px;margin:0 0 4px}" +
+      "p#caption{color:#8b949e;margin:0 0 16px}" +
+      ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}" +
+      "img{max-width:100%;height:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.4)}" +
+      ".placeholder{color:#8b949e;font-style:italic}</style></head>" +
+      "<body><h1>HERMES - Pictures</h1><p id='caption'></p><div id='grid' class='grid'></div></body></html>"
+  );
+  win.document.close();
+  window.pictureWin = win;
+  return win;
+}
+
+function addPicture(win, src) {
+  const img = win.document.createElement("img");
+  img.src = src;
+  img.alt = "Picture";
+  win.document.getElementById("grid").appendChild(img);
+}
+
+function finishPictures(win, text, sawImage) {
+  const doc = win.document;
+  const cap = doc.getElementById("caption");
+  if (text) cap.textContent = text;
+  if (!sawImage) {
+    const p = doc.createElement("p");
+    p.className = "placeholder";
+    p.textContent = "No pictures found, Pilot.";
+    doc.getElementById("grid").appendChild(p);
+  }
+}
+
 async function send(spokenText) {
   const text = (spokenText || input.value).trim();
   if (!text) return;
@@ -192,6 +239,9 @@ async function send(spokenText) {
   addMsg("user", text);
 
   const botDiv = addMsg("bot", "…");
+  botDiv.textContent = "";
+  const botText = document.createElement("span");
+  botDiv.appendChild(botText);
 
   let res;
   try {
@@ -216,6 +266,8 @@ async function send(spokenText) {
 
   const ctype = res.headers.get("content-type") || "";
   let full = "";
+  let imgWin = null;
+  let sawImage = false;
 
   if (ctype.includes("text/event-stream")) {
     const reader = res.body.getReader();
@@ -233,7 +285,22 @@ async function send(spokenText) {
         if (payload === "[DONE]") continue;
         try {
           const obj = JSON.parse(payload);
+          if (obj.intent === "image") {
+            imgWin = pictureWindow();
+            continue;
+          }
           if (obj.delta) full += obj.delta;
+          if (obj.image) {
+            sawImage = true;
+            if (imgWin && !imgWin.closed) addPicture(imgWin, obj.image);
+            else {
+              const img = document.createElement("img");
+              img.className = "bot-img";
+              img.src = obj.image;
+              img.alt = "Generated image";
+              botDiv.appendChild(img);
+            }
+          }
           if (obj.done) break;
           if (obj.choices) {
             const d = obj.choices[0] && obj.choices[0].delta;
@@ -241,7 +308,7 @@ async function send(spokenText) {
           }
         } catch (e) {}
       }
-      botDiv.textContent = full + "▊";
+      botText.textContent = full + "▊";
       scrollBottom();
     }
   } else {
@@ -249,7 +316,8 @@ async function send(spokenText) {
     full = data.reply || "";
   }
 
-  botDiv.textContent = full;
+  botText.textContent = full;
+  if (imgWin && !imgWin.closed) finishPictures(imgWin, full, sawImage);
   history.push({ role: "assistant", content: full });
   scrollBottom();
 
@@ -371,6 +439,18 @@ function primeAudio() {
 
 document.addEventListener("pointerdown", primeAudio, { capture: true });
 document.addEventListener("keydown", primeAudio, { capture: true });
+
+function autoStartMic(e) {
+  document.removeEventListener("pointerdown", autoStartMic, true);
+  document.removeEventListener("keydown", autoStartMic, true);
+  if (e.target.closest("#micBtn")) return;
+  if (micWantOn && !micOn) {
+    startMic();
+    setEye("listening");
+  }
+}
+document.addEventListener("pointerdown", autoStartMic, true);
+document.addEventListener("keydown", autoStartMic, true);
 
 function startMic() {
   if (!SR || recognition) return;
@@ -529,13 +609,61 @@ const chatToggle = document.getElementById("chatToggle");
 chatToggle.addEventListener("click", () => {
   const hidden = document.body.classList.toggle("chat-hidden");
   chatToggle.textContent = hidden ? "▴ Show chat" : "▾ Hide chat";
+  if (!hidden) scrollBottom();
 });
 chatToggle.textContent = document.body.classList.contains("chat-hidden") ? "▴ Show chat" : "▾ Hide chat";
+
+const EYE_FRAC_KEY = "hermes-eye-frac";
+const chatBar = document.getElementById("chatBar");
+const eyeEl = document.getElementById("eye");
+
+function eyeRegionH() {
+  const top = document.querySelector(".topbar").offsetHeight || 0;
+  const bar = document.querySelector(".chatbar").offsetHeight || 0;
+  const foot = document.querySelector(".inputbar").offsetHeight || 0;
+  return Math.max(120, window.innerHeight - top - bar - foot);
+}
+
+let eyeFrac = parseFloat(localStorage.getItem(EYE_FRAC_KEY)) || 0.6;
+
+function applyEyeFrac(f) {
+  eyeFrac = Math.max(0.1, Math.min(0.9, f));
+  localStorage.setItem(EYE_FRAC_KEY, eyeFrac);
+  renderEye();
+}
+
+function renderEye() {
+  document.documentElement.style.setProperty(
+    "--eye-h",
+    Math.round(eyeFrac * eyeRegionH()) + "px"
+  );
+}
+
+chatBar.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || e.target.closest("button")) return;
+  e.preventDefault();
+  const startY = e.clientY;
+  const startFrac = eyeFrac;
+  const region = eyeRegionH();
+  chatBar.setPointerCapture(e.pointerId);
+  const onMove = (ev) => applyEyeFrac(startFrac + (ev.clientY - startY) / region);
+  const onUp = () => {
+    chatBar.removeEventListener("pointermove", onMove);
+    chatBar.removeEventListener("pointerup", onUp);
+  };
+  chatBar.addEventListener("pointermove", onMove);
+  chatBar.addEventListener("pointerup", onUp);
+});
+
+window.addEventListener("resize", renderEye);
+renderEye();
 
 fetchSettings().then(() => {
   statusDot.classList.add("online");
   if (micSupported()) {
-    micBtn.title = "Click to start always-on listening (say \u201CHermes\u201D first)";
+    micWantOn = true;
+    micBtn.classList.add("active");
+    micBtn.title = "Click to stop always-on listening (say \u201CHermes\u201D first)";
   } else {
     micBtn.style.display = "none";
     micBtn.disabled = true;

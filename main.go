@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -85,6 +86,28 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
+func loadDotEnv() {
+	b, err := os.ReadFile(".env")
+	if err != nil {
+		return
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		k, v, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		k = strings.TrimSpace(k)
+		v = strings.Trim(strings.TrimSpace(v), `"'`)
+		if os.Getenv(k) == "" {
+			os.Setenv(k, v)
+		}
+	}
+}
+
 type chatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
@@ -111,9 +134,10 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	q := req.Messages[len(req.Messages)-1].Content
+
 	// Local knowledge base: answer known questions without calling the model.
-	local := localAnswer(strings.ToLower(req.Messages[len(req.Messages)-1].Content))
-	if local != "" {
+	if local := localAnswer(strings.ToLower(q)); local != "" {
 		writeSSE(w, local)
 		return
 	}
@@ -123,6 +147,24 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 	messages := make([]chatMessage, 0, len(req.Messages)+1)
 	messages = append(messages, chatMessage{Role: "system", Content: s.SystemPrompt})
 	messages = append(messages, req.Messages...)
+
+	// Mistral handles real-time queries (weather, time, news) and image
+	// generation. Everything else stays on the local Ollama model.
+	if mistralEnabled() {
+		if wantsRealtime(q) {
+			handleMistralTools(w, s, messages)
+			return
+		}
+		if classifyImageRequest(q) == "generate" {
+			handleMistralImage(w, q)
+			return
+		}
+	}
+	// Internet image search needs no API key.
+	if classifyImageRequest(q) == "search" {
+		handleImageSearch(w, q)
+		return
+	}
 
 	handleLocalChat(w, s, messages)
 }
@@ -308,7 +350,12 @@ func handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	loadDotEnv()
 	port := envOr("PORT", "8080")
+
+	if err := os.MkdirAll(genDir(), 0o755); err != nil {
+		log.Printf("could not create gen dir: %v", err)
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/chat", handleChat)
@@ -322,6 +369,20 @@ func main() {
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
+	})
+	mux.HandleFunc("/gen/", func(w http.ResponseWriter, r *http.Request) {
+		name := filepath.Base(r.URL.Path)
+		f := filepath.Join(genDir(), name)
+		fh, err := os.Open(f)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		defer fh.Close()
+		head := make([]byte, 512)
+		n, _ := fh.Read(head)
+		w.Header().Set("Content-Type", http.DetectContentType(head[:n]))
+		http.ServeContent(w, r, name, time.Time{}, fh)
 	})
 	fs := http.StripPrefix("/", http.FileServer(http.Dir(envOr("STATIC_DIR", "static"))))
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
