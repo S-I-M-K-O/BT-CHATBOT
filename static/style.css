@@ -74,11 +74,28 @@ html, body {
   min-width: 42px;
 }
 
+.mic-icon {
+  width: 22px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
 .mic-btn.active {
   background: var(--accent);
   border-color: var(--accent);
   color: #10151c;
   box-shadow: 0 0 10px rgba(255, 106, 0, 0.6);
+}
+
+.mic-btn.active .mic-shell {
+  fill: #10151c;
+  stroke: #10151c;
+}
+
+.mic-btn.active .mic-core {
+  fill: #fff;
+  stroke: #10151c;
 }
 
 .eyestatus {
@@ -94,7 +111,7 @@ html, body {
 #eye .design { display: none; }
 #eye[data-design="classic"] .design[data-el="classic"],
 #eye[data-design="scorch"] .design[data-el="scorch"],
-#eye[data-design="sentry"] .design[data-el="sentry"],
+#eye[data-design="cyclops"] .design[data-el="cyclops"],
 #eye[data-design="iris"] .design[data-el="iris"],
 #eye[data-design="radar"] .design[data-el="radar"],
 #eye[data-design="mantis"] .design[data-el="mantis"] {
@@ -112,7 +129,7 @@ html, body {
 
 .eye {
   width: auto;
-  height: 60vh;
+  height: var(--eye-h, 60vh);
   max-width: 100vw;
   display: block;
 }
@@ -131,9 +148,18 @@ html, body {
 .chatbar {
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 12px;
   padding: 10px 12px;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
+  cursor: ns-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.chatbar:hover {
+  background: var(--panel2);
 }
 
 .chatbar button {
@@ -153,6 +179,20 @@ html, body {
   border-color: var(--accent);
 }
 
+.chatbar .grip {
+  flex: none;
+  width: 72px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chatbar:hover .grip {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
 body.chat-hidden #chat,
 body.chat-hidden .inputbar {
   display: none;
@@ -166,6 +206,10 @@ body.chat-hidden {
 body.chat-hidden .eyezone {
   min-height: calc(100vh - 110px);
   justify-content: center;
+}
+
+body.chat-hidden .eye {
+  height: calc(100vh - 140px);
 }
 
 /* base idle: slow breathing */
@@ -217,18 +261,26 @@ body.chat-hidden .eyezone {
   100% { transform: translateY(var(--scan-travel, 46px)); opacity: 1; }
 }
 #eye[data-design="scorch"] .scan { --scan-travel: 8px; }
-#eye[data-design="sentry"] .scan { --scan-travel: 3px; }
+#eye[data-design="cyclops"] .scan { --scan-travel: 22px; }
 
 /* STATE: listening / thinking */
 #eyezone[data-state="listening"] .eyebanner,
 #eyezone[data-state="thinking"] .eyebanner { color: var(--accent); }
 
 #eye[data-state="listening"] .pupil {
-  animation: pupil-ready 3.4s ease-in-out infinite;
+  animation: pupil-ready 8s ease-in-out infinite;
 }
 @keyframes pupil-ready {
-  0%,100% { transform: translate(0px, 0px) scale(1); }
-  50%     { transform: translate(0px, 0px) scale(0.93); }
+  0%   { transform: translate(0px, 0px) scale(1); }
+  7%   { transform: translate(0px, 0px) scale(0.92); }
+  11%  { transform: translate(0px, 0px) scale(1); }
+  30%  { transform: translate(-9px, -5px) scale(1); }
+  37%  { transform: translate(-9px, -5px) scale(0.92); }
+  41%  { transform: translate(-9px, -5px) scale(1); }
+  63%  { transform: translate(8px, 6px) scale(1); }
+  70%  { transform: translate(8px, 6px) scale(0.92); }
+  74%  { transform: translate(8px, 6px) scale(1); }
+  100% { transform: translate(0px, 0px) scale(1); }
 }
 #eye[data-state="listening"] .pupil .glow {
   animation: glow-ready 2.8s ease-in-out infinite;
@@ -319,6 +371,7 @@ button.small {
 
 #chat {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 18px;
   display: flex;
@@ -355,6 +408,14 @@ button.small {
   background: var(--bot);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
+}
+
+.bot-img {
+  display: block;
+  max-width: 100%;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
 }
 
 .inputbar {

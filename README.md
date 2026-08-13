@@ -9,6 +9,10 @@ A fully local, voice-activated AI chatbot for your web browser. Runs in a Docker
 - **Animated visor eye** in the center of the page that reacts: idle, awaiting call, thinking (while streaming an answer), speaking (while HERMES talks), and confused/error (when something fails).
 - **Local LLM (Ollama)** — chat runs through a local Ollama instance (default model `qwen3.5:latest`). Nothing leaves your machine.
 - **Local Piper voice** — a Piper TTS model runs fully locally inside the container. Files are vendored in `voices/`.
+- **Real-time data via Mistral (optional)** — set `MISTRAL_API_KEY` and questions about the **weather** (Open-Meteo), **time/date**, and the **news** (Google News feeds) are answered live via Mistral function calling.
+- **Images — search or generate**:
+  - *Search the internet* for real photos (free, no key — Openverse/CC): "find a picture of …", "show me a photo of …".
+  - *Generate* images with Mistral (needs `MISTRAL_API_KEY`): "draw …", "generate an image of …".
 - **Local knowledge base**: greetings and common phrases answered instantly, offline.
 - **Adjustable voice** (in the ⚙ Settings panel):
   - *HERMES (local Piper)*: the default model voice, runs on-device.
@@ -38,6 +42,23 @@ go run .
 # open http://localhost:8080
 ```
 
+## Real-time data & images (Mistral)
+
+Set `MISTRAL_API_KEY` (in a local `.env`, which is gitignored) to enable:
+
+- **Weather / time / news** — HERMES detects these intents and uses Mistral's
+  function calling with live tools (Open-Meteo for weather, the server clock
+  for time, Google News RSS for headlines).
+- **Image generation** — "draw …", "generate an image of …" produces an image
+  via Mistral's image tool and shows it inline in the chat.
+
+**Image search needs no key.** Ask to *find a picture / photo of …* and HERMES
+pulls real photos from Openverse (Creative Commons) and shows up to three inline.
+
+Without a key, real-time questions and generation fall back to the local Ollama
+model as before; image search still works. The Mistral model is configurable via
+`MISTRAL_MODEL` (default `mistral-medium-latest`).
+
 ## Wake-word voice input
 
 - Click the 🎤 button (Chrome/Edge support speech recognition; the button is hidden otherwise).
@@ -54,10 +75,11 @@ The Go backend (`main.go`) first checks a small built-in knowledge base (greetin
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| POST | `/api/chat` | Chat; streams SSE. Local KB answer or Ollama fallback. |
+| POST | `/api/chat` | Chat; streams SSE. Local KB, Mistral (real-time/images), or Ollama fallback. |
 | POST | `/api/tts` | Text-to-speech (local Piper). |
 | GET/POST | `/api/settings` | Read / persist settings (JSON). |
 | GET | `/` | Web UI (chat + mechanical eye). |
+| GET | `/gen/…` | Serves generated images (written to `data/gen/`). |
 
 ## Voice settings quick guide
 
@@ -76,7 +98,8 @@ The visor in the center of the page reflects HERMES' state:
 ## Repo layout
 
 ```
-main.go          Go server: chat proxy, local KB, Piper TTS, settings
+main.go          Go server: chat proxy, local KB, Piper TTS, settings, .env loader
+mistral.go       Mistral integration: real-time tools (weather/time/news) + image generation
 static/          Web UI (HTML/CSS/JS) with the animated eye + wake-word mic
 voices/          Piper voice model (BT7274.onnx + config)
 Dockerfile       Multi-stage: Go build + Debian runtime with bundled Piper
