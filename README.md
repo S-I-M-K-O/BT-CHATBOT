@@ -1,5 +1,7 @@
 # HERMES — Voice Assistant
 
+> **HERMES** = *Holistic Emotive Reasoning & Multifunction Execution System* — a Vanguard-class assistant.
+
 A fully local, voice-activated AI chatbot for your web browser. Runs in a Docker container, built in Go, with a customizable voice and an animated mechanical eye. No API keys required anywhere.
 
 ## Features
