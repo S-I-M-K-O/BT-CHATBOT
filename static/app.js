@@ -20,13 +20,27 @@ const EYE_LABELS = {
   error: "ERROR",
 };
 
+const EYE_LABELS_DE = {
+  idle: "BEREIT",
+  listening: "HÖRE ZU",
+  thinking: "DENKE NACH",
+  speaking: "SPRICHT",
+  confused: "UNSICHER",
+  error: "FEHLER",
+};
+
+function isGermanVoice() {
+  return settings.piperVoice === "JarvisDE";
+}
+
 let eyeState = "idle";
 
 function setEye(state, banner) {
   eyeState = state;
   eye.setAttribute("data-state", state);
   eyeZone.setAttribute("data-state", state);
-  const label = EYE_LABELS[state] || "READY";
+  const labels = isGermanVoice() ? EYE_LABELS_DE : EYE_LABELS;
+  const label = labels[state] || labels.idle;
   eyeBanner.textContent = (banner || label).toUpperCase();
 }
 
@@ -120,8 +134,11 @@ function toggleEngine() {
 
 function testAllBtn() {
   readForm();
-  if (settings.voiceMode === "piper") speakServerPiper("[System diagnostic: voice check. Pilot, systems online.]");
-  else speak("[System diagnostic: voice check. Pilot, systems online.]", true);
+  const check = isGermanVoice()
+    ? "[Systemdiagnose: Stimmtest. Systeme online.]"
+    : "[System diagnostic: voice check. Systems online.]";
+  if (settings.voiceMode === "piper") speakServerPiper(check);
+  else speak(check, true);
 }
 
 function applyEyeDesign() {
@@ -184,17 +201,12 @@ function scrollBottom() {
   chat.scrollTop = chat.scrollHeight;
 }
 
-function pictureWindow() {
-  if (window.pictureWin && !window.pictureWin.closed) {
-    const grid = window.pictureWin.document.getElementById("grid");
-    if (grid) grid.innerHTML = "";
-    const cap = window.pictureWin.document.getElementById("caption");
-    if (cap) cap.remove();
-    window.pictureWin.focus();
-    return window.pictureWin;
-  }
-  const win = window.open("", "hermes_pictures", "width=960,height=720,left=120,top=80");
-  if (!win) return null;
+function cleanMarkdown(s) {
+  return s.replace(/[*_~`]/g, "").replace(/^#+\s*/gm, "").trim();
+}
+
+function initPictureDoc(win) {
+  if (win.document.getElementById("grid")) return;
   win.document.open();
   win.document.write(
     '<!doctype html><html><head><meta charset="utf-8">' +
@@ -208,9 +220,45 @@ function pictureWindow() {
       "<body><h1>HERMES - Pictures</h1><p id='caption'></p><div id='grid' class='grid'></div></body></html>"
   );
   win.document.close();
+}
+
+function pictureWindow() {
+  if (window.pictureWin && !window.pictureWin.closed) {
+    const win = window.pictureWin;
+    const grid = win.document.getElementById("grid");
+    if (grid) grid.innerHTML = "";
+    const cap = win.document.getElementById("caption");
+    if (cap) cap.textContent = "";
+    initPictureDoc(win);
+    try {
+      win.resizeTo(960, 720);
+      win.moveTo(120, 80);
+    } catch (e) {}
+    win.focus();
+    return win;
+  }
+  const win = window.open("", "hermes_pictures", "width=960,height=720,left=120,top=80");
+  if (!win) return null;
+  initPictureDoc(win);
   window.pictureWin = win;
   return win;
 }
+
+// Popup blockers only allow window.open within a user gesture. Once the named
+// picture window is closed, re-creating it after the async fetch gets blocked
+// and pictures silently fall back into the chat. Pre-opening the window on the
+// first gesture keeps it reusable and never blocked.
+function prefetchPictureWindow() {
+  document.removeEventListener("pointerdown", prefetchPictureWindow, true);
+  document.removeEventListener("keydown", prefetchPictureWindow, true);
+  if (window.pictureWin && !window.pictureWin.closed) return;
+  try {
+    const win = window.open("", "hermes_pictures", "width=10,height=10,left=-10000,top=-10000");
+    if (win) window.pictureWin = win;
+  } catch (e) {}
+}
+document.addEventListener("pointerdown", prefetchPictureWindow, true);
+document.addEventListener("keydown", prefetchPictureWindow, true);
 
 function addPicture(win, src) {
   const img = win.document.createElement("img");
@@ -222,13 +270,60 @@ function addPicture(win, src) {
 function finishPictures(win, text, sawImage) {
   const doc = win.document;
   const cap = doc.getElementById("caption");
-  if (text) cap.textContent = text;
+  if (cap && text) cap.textContent = text;
   if (!sawImage) {
     const p = doc.createElement("p");
     p.className = "placeholder";
-    p.textContent = "No pictures found, Pilot.";
+    p.textContent = isGermanVoice() ? "Keine Bilder gefunden." : "No pictures found.";
     doc.getElementById("grid").appendChild(p);
   }
+}
+
+// Fallback when window.open is blocked: a fullscreen overlay styled like a
+// separate window that always appears in front of the page.
+function openPictureOverlay() {
+  let ov = document.getElementById("picturesOverlay");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "picturesOverlay";
+    ov.innerHTML =
+      '<div class="pictures-window">' +
+      '<div class="pictures-head"><h1>HERMES - Pictures</h1><button id="picturesClose" title="Close">✕</button></div>' +
+      '<p class="pictures-caption"></p>' +
+      '<div class="pictures-grid"></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener("click", (e) => {
+      if (e.target === ov || e.target.id === "picturesClose") closePictureOverlay();
+    });
+  }
+  const grid = ov.querySelector(".pictures-grid");
+  grid.innerHTML = "";
+  const cap = ov.querySelector(".pictures-caption");
+  cap.textContent = "";
+  ov.classList.add("visible");
+  return {
+    addPicture: (src) => {
+      const img = document.createElement("img");
+      img.className = "bot-img";
+      img.src = src;
+      img.alt = "Picture";
+      grid.appendChild(img);
+    },
+    setCaption: (t) => {
+      cap.textContent = t;
+    },
+    addPlaceholder: (t) => {
+      const p = document.createElement("p");
+      p.className = "placeholder";
+      p.textContent = t;
+      grid.appendChild(p);
+    },
+  };
+}
+
+function closePictureOverlay() {
+  const ov = document.getElementById("picturesOverlay");
+  if (ov) ov.classList.remove("visible");
 }
 
 async function send(spokenText) {
@@ -251,22 +346,23 @@ async function send(spokenText) {
       body: JSON.stringify({ messages: history }),
     });
   } catch (e) {
-    botDiv.textContent = "Link lost, Pilot.";
-    setEye("confused", "LINK LOST");
+    botDiv.textContent = isGermanVoice() ? "Verbindung verloren." : "Link lost.";
+    setEye("confused", isGermanVoice() ? "VERBINDUNG VERLOREN" : "LINK LOST");
     return;
   }
 
   if (!res.ok) {
     botDiv.textContent = "Error: " + res.status;
-    setEye("confused", "ANALYSIS FAILED");
+    setEye("confused", isGermanVoice() ? "ANALYSE FEHLGESCHLAGEN" : "ANALYSIS FAILED");
     return;
   }
 
-  setEye("thinking", "PROCESSING");
+  setEye("thinking");
 
   const ctype = res.headers.get("content-type") || "";
   let full = "";
   let imgWin = null;
+  let overlayWin = null;
   let sawImage = false;
 
   if (ctype.includes("text/event-stream")) {
@@ -287,12 +383,14 @@ async function send(spokenText) {
           const obj = JSON.parse(payload);
           if (obj.intent === "image") {
             imgWin = pictureWindow();
+            if (!imgWin) overlayWin = openPictureOverlay();
             continue;
           }
           if (obj.delta) full += obj.delta;
           if (obj.image) {
             sawImage = true;
             if (imgWin && !imgWin.closed) addPicture(imgWin, obj.image);
+            else if (overlayWin) overlayWin.addPicture(obj.image);
             else {
               const img = document.createElement("img");
               img.className = "bot-img";
@@ -316,8 +414,15 @@ async function send(spokenText) {
     full = data.reply || "";
   }
 
+  full = cleanMarkdown(full);
   botText.textContent = full;
   if (imgWin && !imgWin.closed) finishPictures(imgWin, full, sawImage);
+  else if (overlayWin) {
+    overlayWin.setCaption(full);
+    if (!sawImage) {
+      overlayWin.addPlaceholder(isGermanVoice() ? "Keine Bilder gefunden." : "No pictures found.");
+    }
+  }
   history.push({ role: "assistant", content: full });
   scrollBottom();
 
@@ -364,7 +469,7 @@ async function speakServerPiper(text) {
 
 async function speakTTS(text, engine, voice) {
   try {
-    setEye("speaking", "SPEAKING");
+    setEye("speaking");
     const wasListening = micOn;
     if (micOn) pauseMic();
     const res = await fetch("/api/tts", {
@@ -478,7 +583,7 @@ function startMic() {
   recognition.onerror = (e) => {
     if (e.error === "not-allowed" || e.error === "service-not-allowed") {
       stopMic();
-      setEye("error", "MIC BLOCKED");
+      setEye("error", isGermanVoice() ? "MIKROFON GESPERRT" : "MIC BLOCKED");
     } else if (e.error === "no-speech") {
       // ignore; Chrome throws this constantly in continuous mode
     } else {
@@ -545,7 +650,7 @@ function routeSpoken(text) {
     micArmed = true;
     if (!micBusy) {
       micBusy = true;
-      setEye("listening", "YES?");
+      setEye("listening", isGermanVoice() ? "JA?" : "YES?");
       if (settings.speak !== false) speakAck();
       micBusy = false;
     }
@@ -573,21 +678,47 @@ function sendSpoken(text, checkWake) {
   }
 }
 
+// Resume listening after the ack so the follow-up command is still captured.
+// A short delay lets any speaker tail fade so HERMES does not echo his own ack.
+function resumeAck(wasListening, wasArmed) {
+  if (wasListening && micWantOn && !micOn) {
+    setTimeout(() => {
+      startMic();
+      if (wasArmed) micArmed = true;
+    }, 250);
+  } else if (wasArmed) {
+    micArmed = true;
+  }
+}
+
 async function speakAck() {
+  const wasListening = micOn;
+  const wasArmed = micArmed;
   try {
+    if (micOn) pauseMic();
     const res = await fetch("/api/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: "Yes?", engine: settings.voiceMode, voice: settings.piperVoice }),
+      body: JSON.stringify({ text: isGermanVoice() ? "Ja?" : "Yes?", engine: settings.voiceMode, voice: settings.piperVoice }),
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      resumeAck(wasListening, wasArmed);
+      return;
+    }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
     audio.volume = parseFloat(settings.volume) || 1;
-    audio.play().catch(() => {});
-    audio.onended = () => URL.revokeObjectURL(url);
-  } catch (e) {}
+    const done = () => {
+      URL.revokeObjectURL(url);
+      resumeAck(wasListening, wasArmed);
+    };
+    audio.onended = done;
+    audio.onerror = done;
+    audio.play().catch(done);
+  } catch (e) {
+    resumeAck(wasListening, wasArmed);
+  }
 }
 
 function toggleMic() {

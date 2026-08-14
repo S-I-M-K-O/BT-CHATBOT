@@ -28,4 +28,29 @@
             }
         },
         "aliases": []
-    }}
+    },
+    "JarvisDE": {
+        "key": "JarvisDE",
+        "name": "piper",
+        "language": {
+            "code": "de_DE",
+            "family": "de",
+            "region": "DE",
+            "name_native": "Deutsch",
+            "name_english": "German",
+            "country_english": "Germany"
+        },
+        "quality": "medium",
+        "num_speakers": 1,
+        "speaker_id_map": {},
+        "files": {
+            "jarvisde.onnx": {
+                "size_bytes": 63122309
+            },
+            "jarvisde.onnx.json": {
+                "size_bytes": 7652
+            }
+        },
+        "aliases": []
+    }
+}

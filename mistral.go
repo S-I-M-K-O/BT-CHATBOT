@@ -36,24 +36,44 @@ func mistralEnabled() bool { return mistralKey() != "" }
 func genDir() string { return envOr("GEN_DIR", filepath.Join("data", "gen")) }
 
 var realtimeWords = []string{
+	// English
 	"weather", "forecast", "temperature", "temp", "raining", "rain", "snow",
 	"wind", "humidity", "sunny", "cloudy", "celsius", "degrees",
-	"time", "clock", "date", "today",
+	"time", "clock", "date",
 	"news", "headlines", "headline", "breaking",
+	// Deutsch
+	"wetter", "wetterbericht", "wettervorhersage", "temperatur", "regen",
+	"schnee", "wind", "luftfeuchtigkeit", "sonnig", "bewoelkt", "bewölkt",
+	"grad", "nebel",
+	"uhr", "datum", "wochentag", "spaet", "spät",
+	"nachrichten", "schlagzeilen",
 }
 
 var imageGenWords = []string{
 	"draw", "generate", "render", "create an image", "create a picture",
 	"make an image", "make a picture", "paint", "illustration", "concept art",
+	// Deutsch
+	"zeichne", "zeichnen", "generiere", "generieren", "erzeuge", "erzeugen",
+	"erstelle", "erstellen", "male", "malen", "illustration", "konzeptkunst",
+	"konzept art",
 }
 
 var imageSearchWords = []string{
 	"find", "search", "look up", "photo of", "photos of", "picture of",
 	"pictures of", "image of", "images of", "show me a", "show me pictures",
 	"show me some", "get a picture", "find a picture", "find a photo",
+	// Deutsch
+	"zeig mir", "zeige mir", "such nach", "suche nach", "such", "suche",
+	"finde mir", "finde", "finden", "bild von", "bilder von", "bild von einem",
+	"foto von", "fotos von", "ein bild", "ein foto", "bild", "bilder", "foto",
+	"fotos", "abbildung", "grafik",
 }
 
-var imagePlainWords = []string{"image", "picture", "photo", "pic", "drawing"}
+var imagePlainWords = []string{
+	"image", "picture", "photo", "pic", "drawing",
+	// Deutsch
+	"bild", "bilder", "bildern", "foto", "fotos", "fotografie", "abbildung", "grafik",
+}
 
 func wantsRealtime(q string) bool {
 	q = strings.ToLower(q)
@@ -165,7 +185,7 @@ func handleMistralTools(w http.ResponseWriter, s *Settings, messages []chatMessa
 			"parallel_tool_calls": true,
 		}, &resp); err != nil {
 			log.Printf("mistral chat error: %v", err)
-			writeSSE(w, "My satellite link is down, Pilot. Mistral could not be reached — check that MISTRAL_API_KEY is set.")
+			writeSSE(w, phrasesFor(s.PiperVoice).satelliteDown)
 			return
 		}
 		if len(resp.Choices) == 0 {
@@ -194,7 +214,7 @@ func handleMistralTools(w http.ResponseWriter, s *Settings, messages []chatMessa
 		}
 	}
 	if final == "" {
-		final = "No data recovered from the satellite, Pilot. Try again."
+		final = phrasesFor(s.PiperVoice).noData
 	}
 	writeSSE(w, final)
 }
@@ -405,6 +425,10 @@ func getNewsTool(topic string) string {
 	return string(b)
 }
 
+// maxDownloadBytes caps bodies fetched from the network (weather, news, images)
+// so a huge response cannot blow up memory.
+const maxDownloadBytes = 25 << 20 // 25 MB
+
 func httpGetWithTimeout(u string, timeout time.Duration) ([]byte, error) {
 	client := &http.Client{Timeout: timeout}
 	resp, err := client.Get(u)
@@ -415,7 +439,7 @@ func httpGetWithTimeout(u string, timeout time.Duration) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("http %d", resp.StatusCode)
 	}
-	return io.ReadAll(resp.Body)
+	return io.ReadAll(io.LimitReader(resp.Body, maxDownloadBytes))
 }
 
 func httpGet(u string) ([]byte, error) {
@@ -430,15 +454,17 @@ func httpGetJSON(u string, out any) error {
 	return json.Unmarshal(b, out)
 }
 
-func handleMistralImage(w http.ResponseWriter, q string) {
+func handleMistralImage(w http.ResponseWriter, s *Settings, q string) {
 	sseBegin(w)
 	writeSSEJSON(w, map[string]any{"intent": "image"})
 	w.(http.Flusher).Flush()
 
+	p := phrasesFor(s.PiperVoice)
+
 	agentID, err := ensureImageAgent()
 	if err != nil {
 		log.Printf("mistral image agent error: %v", err)
-		writeSSE(w, "My image fabricator is offline, Pilot. Check the Mistral API key.")
+		writeSSE(w, p.imageFabricator)
 		return
 	}
 	var conv struct {
@@ -454,7 +480,7 @@ func handleMistralImage(w http.ResponseWriter, q string) {
 		"store":    false,
 	}, &conv); err != nil {
 		log.Printf("mistral image conversation error: %v", err)
-		writeSSE(w, "Image synthesis failed, Pilot. "+err.Error())
+		writeSSE(w, p.imageSynthesis+err.Error())
 		return
 	}
 
@@ -486,23 +512,23 @@ func handleMistralImage(w http.ResponseWriter, q string) {
 		}
 	}
 	if fileID == "" {
-		writeSSE(w, "The image came back empty, Pilot. Try a more specific request.")
+		writeSSE(w, p.imageEmpty)
 		return
 	}
 	data, err := mistralGetBytes("/v1/files/" + fileID + "/content")
 	if err != nil {
 		log.Printf("mistral image download error: %v", err)
-		writeSSE(w, "Could not retrieve the generated image, Pilot.")
+		writeSSE(w, p.imageRetrieve)
 		return
 	}
 	dir := genDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		writeSSE(w, "Could not store the generated image, Pilot.")
+		writeSSE(w, p.imageStore)
 		return
 	}
 	name := fmt.Sprintf("hermes_%d.png", time.Now().UnixNano())
 	if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
-		writeSSE(w, "Could not store the generated image, Pilot.")
+		writeSSE(w, p.imageStore)
 		return
 	}
 
@@ -527,14 +553,16 @@ func streamSSE(w http.ResponseWriter, text string) {
 	}
 }
 
-func handleImageSearch(w http.ResponseWriter, q string) {
+func handleImageSearch(w http.ResponseWriter, s *Settings, q string) {
 	sseBegin(w)
 	writeSSEJSON(w, map[string]any{"intent": "image"})
 	w.(http.Flusher).Flush()
 
+	p := phrasesFor(s.PiperVoice)
+
 	subject := extractImageSubject(q)
 	if subject == "" {
-		writeSSE(w, "What should I search for, Pilot?")
+		writeSSE(w, p.searchNoSubject)
 		return
 	}
 	u := "https://api.openverse.org/v1/images/?page_size=3&q=" + url.QueryEscape(subject)
@@ -545,12 +573,12 @@ func handleImageSearch(w http.ResponseWriter, q string) {
 		} `json:"results"`
 	}
 	if err := httpGetJSON(u, &res); err != nil || len(res.Results) == 0 {
-		writeSSE(w, "No pictures found on the network, Pilot. Try a different subject.")
+		writeSSE(w, p.searchEmpty)
 		return
 	}
 	dir := genDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		writeSSE(w, "Could not store the pictures, Pilot.")
+		writeSSE(w, p.searchStore)
 		return
 	}
 	var urls []string
@@ -579,10 +607,10 @@ func handleImageSearch(w http.ResponseWriter, q string) {
 		urls = append(urls, "/gen/"+name)
 	}
 	if len(urls) == 0 {
-		writeSSE(w, "Found pictures but could not download them, Pilot.")
+		writeSSE(w, p.searchDownload)
 		return
 	}
-	streamSSE(w, fmt.Sprintf("Found %d pictures of %s, Pilot.", len(urls), subject))
+	streamSSE(w, fmt.Sprintf(p.searchFound, len(urls), subject))
 	for _, u := range urls {
 		writeSSEJSON(w, map[string]any{"image": u})
 	}
@@ -592,7 +620,11 @@ func handleImageSearch(w http.ResponseWriter, q string) {
 
 func extractImageSubject(q string) string {
 	q = strings.ToLower(strings.TrimSpace(q))
-	for _, p := range []string{"show me", "find me", "look up", "search for", "get me", "can you show", "show"} {
+	for _, p := range []string{
+		"zeig mir ein", "zeige mir ein", "zeig mir", "zeige mir", "such nach",
+		"suche nach", "finde mir", "finde", "suche", "show me", "find me", "find",
+		"look up", "search for", "get me", "can you show", "show",
+	} {
 		if strings.HasPrefix(q, p) {
 			q = strings.TrimSpace(q[len(p):])
 			break
@@ -602,6 +634,11 @@ func extractImageSubject(q string) string {
 		"a": true, "an": true, "the": true, "of": true, "for": true, "me": true,
 		"picture": true, "pictures": true, "photo": true, "photos": true,
 		"image": true, "images": true, "some": true, "any": true, "please": true,
+		"ein": true, "eine": true, "einen": true, "einem": true, "einer": true,
+		"eines": true, "der": true, "die": true, "das": true, "den": true,
+		"dem": true, "des": true, "mir": true, "bitte": true, "mal": true,
+		"etwas": true, "von": true, "bild": true, "bilder": true, "bildern": true,
+		"foto": true, "fotos": true, "abbildung": true, "grafik": true,
 	}
 	var kept []string
 	for _, w := range strings.Fields(q) {
