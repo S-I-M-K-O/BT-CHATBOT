@@ -144,11 +144,24 @@ func mistralGetBytes(path string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	rb, _ := io.ReadAll(resp.Body)
+	rb, err := io.ReadAll(io.LimitReader(resp.Body, maxDownloadBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(rb) > maxDownloadBytes {
+		return nil, fmt.Errorf("mistral %s: response exceeds %d bytes", path, maxDownloadBytes)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("mistral %s: %d: %s", path, resp.StatusCode, strings.TrimSpace(string(rb)))
 	}
 	return rb, nil
+}
+
+func voiceLang(voice string) string {
+	if isGermanVoice(voice) {
+		return "de"
+	}
+	return "en"
 }
 
 func handleMistralTools(w http.ResponseWriter, s *Settings, messages []chatMessage) {
@@ -204,7 +217,7 @@ func handleMistralTools(w http.ResponseWriter, s *Settings, messages []chatMessa
 			break
 		}
 		for _, tc := range msg.ToolCalls {
-			result := executeMistralTool(tc.Function.Name, tc.Function.Arguments)
+			result := executeMistralTool(tc.Function.Name, tc.Function.Arguments, voiceLang(s.PiperVoice))
 			msgs = append(msgs, map[string]any{
 				"role":         "tool",
 				"tool_call_id": tc.ID,
@@ -262,7 +275,7 @@ func mistralTools() []any {
 	}
 }
 
-func executeMistralTool(name, args string) string {
+func executeMistralTool(name, args, lang string) string {
 	var p struct {
 		City  string `json:"city"`
 		Topic string `json:"topic"`
@@ -272,9 +285,9 @@ func executeMistralTool(name, args string) string {
 	case "get_time":
 		return getTimeTool()
 	case "get_weather":
-		return getWeatherTool(p.City)
+		return getWeatherTool(p.City, lang)
 	case "get_news":
-		return getNewsTool(p.Topic)
+		return getNewsTool(p.Topic, lang)
 	}
 	return `{"error":"unknown tool"}`
 }
@@ -289,11 +302,11 @@ func getTimeTool() string {
 	return string(b)
 }
 
-func getWeatherTool(city string) string {
+func getWeatherTool(city, lang string) string {
 	if city == "" {
 		return `{"error":"no city provided"}`
 	}
-	lat, lon, name, err := geocodeCity(city)
+	lat, lon, name, err := geocodeCity(city, lang)
 	if err != nil {
 		b, _ := json.Marshal(map[string]string{"error": err.Error()})
 		return string(b)
@@ -323,8 +336,12 @@ func getWeatherTool(city string) string {
 	return string(b)
 }
 
-func geocodeCity(city string) (float64, float64, string, error) {
-	u := "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=" + url.QueryEscape(city)
+func geocodeCity(city, lang string) (float64, float64, string, error) {
+	l := "en"
+	if lang == "de" {
+		l = "de"
+	}
+	u := "https://geocoding-api.open-meteo.com/v1/search?count=1&language=" + l + "&format=json&name=" + url.QueryEscape(city)
 	var res struct {
 		Results []struct {
 			Latitude  float64 `json:"latitude"`
@@ -383,10 +400,14 @@ func wmoCondition(code int) string {
 	return "unknown conditions"
 }
 
-func getNewsTool(topic string) string {
-	feedURL := "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en"
+func getNewsTool(topic, lang string) string {
+	l, gl, ceid := "en-US", "US", "US:en"
+	if lang == "de" {
+		l, gl, ceid = "de-DE", "DE", "DE:de"
+	}
+	feedURL := "https://news.google.com/rss?hl=" + l + "&gl=" + gl + "&ceid=" + ceid
 	if topic != "" {
-		feedURL = "https://news.google.com/rss/search?q=" + url.QueryEscape(topic) + "&hl=en-US&gl=US&ceid=US:en"
+		feedURL = "https://news.google.com/rss/search?q=" + url.QueryEscape(topic) + "&hl=" + l + "&gl=" + gl + "&ceid=" + ceid
 	}
 	body, err := httpGet(feedURL)
 	if err != nil {
@@ -429,9 +450,16 @@ func getNewsTool(topic string) string {
 // so a huge response cannot blow up memory.
 const maxDownloadBytes = 25 << 20 // 25 MB
 
+// httpGetWithTimeout fetches a URL with a User-Agent (some APIs like Openverse
+// reject requests without one) and refuses bodies larger than maxDownloadBytes.
 func httpGetWithTimeout(u string, timeout time.Duration) ([]byte, error) {
 	client := &http.Client{Timeout: timeout}
-	resp, err := client.Get(u)
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "HERMES/1.0 (bt-chatbot voice assistant)")
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -439,7 +467,14 @@ func httpGetWithTimeout(u string, timeout time.Duration) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("http %d", resp.StatusCode)
 	}
-	return io.ReadAll(io.LimitReader(resp.Body, maxDownloadBytes))
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxDownloadBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxDownloadBytes {
+		return nil, fmt.Errorf("response exceeds %d bytes", maxDownloadBytes)
+	}
+	return data, nil
 }
 
 func httpGet(u string) ([]byte, error) {
@@ -526,7 +561,16 @@ func handleMistralImage(w http.ResponseWriter, s *Settings, q string) {
 		writeSSE(w, p.imageStore)
 		return
 	}
-	name := fmt.Sprintf("hermes_%d.png", time.Now().UnixNano())
+	ext := ".png"
+	switch http.DetectContentType(data) {
+	case "image/jpeg":
+		ext = ".jpg"
+	case "image/gif":
+		ext = ".gif"
+	case "image/webp":
+		ext = ".webp"
+	}
+	name := fmt.Sprintf("hermes_%d%s", time.Now().UnixNano(), ext)
 	if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
 		writeSSE(w, p.imageStore)
 		return

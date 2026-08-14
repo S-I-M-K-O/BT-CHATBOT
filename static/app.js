@@ -60,7 +60,13 @@ let settings = {
   speak: true,
   call: true,
   eyeDesign: "classic",
+  autoScroll: true,
 };
+
+// Persist the Piper voice so the eye banners and ack are in the right language
+// before /api/settings finishes loading.
+const savedPiperVoice = localStorage.getItem("hermes-piper-voice");
+if (savedPiperVoice) settings.piperVoice = savedPiperVoice;
 
 let synth = window.speechSynthesis;
 let voices = [];
@@ -88,6 +94,7 @@ async function fetchSettings() {
     const res = await fetch("/api/settings");
     if (!res.ok) throw new Error();
     settings = await res.json();
+    localStorage.setItem("hermes-piper-voice", settings.piperVoice || "BT7274");
     applySettingsToForm();
   } catch (e) {
     console.warn("could not load settings", e);
@@ -95,7 +102,6 @@ async function fetchSettings() {
 }
 
 function applySettingsToForm() {
-  const id = (el) => (document.getElementById(el).value = settings[el.replace("s_", "")]);
   document.getElementById("s_localmodel").value = settings.localModel || "qwen3.5:latest";
   document.getElementById("s_prompt").value = settings.systemPrompt;
   document.getElementById("s_temp").value = settings.temperature;
@@ -111,6 +117,7 @@ function applySettingsToForm() {
   document.getElementById("s_eye").value = settings.eyeDesign || "classic";
   document.getElementById("s_say").checked = settings.speak !== false;
   document.getElementById("s_call").checked = settings.call !== false;
+  document.getElementById("s_auto").checked = settings.autoScroll !== false;
   updateRangeLabels();
   toggleEngine();
   applyEyeDesign();
@@ -160,6 +167,7 @@ function readForm() {
   settings.eyeDesign = document.getElementById("s_eye").value;
   settings.speak = document.getElementById("s_say").checked;
   settings.call = document.getElementById("s_call").checked;
+  settings.autoScroll = document.getElementById("s_auto").checked;
 }
 
 document.getElementById("settingsBtn").addEventListener("click", () => settingsPanel.classList.remove("hidden"));
@@ -183,7 +191,10 @@ document.getElementById("saveBtn").addEventListener("click", async () => {
   });
   const el = document.getElementById("saveMsg");
   el.textContent = res.ok ? "Saved." : "Save failed.";
-  if (res.ok) settings = await res.json();
+  if (res.ok) {
+    settings = await res.json();
+    localStorage.setItem("hermes-piper-voice", settings.piperVoice || "BT7274");
+  }
 });
 
 document.getElementById("testTTSBtn").addEventListener("click", testAllBtn);
@@ -196,7 +207,8 @@ function addMsg(role, text) {
   return div;
 }
 
-function scrollBottom() {
+function scrollBottom(force) {
+  if (!force && settings.autoScroll === false) return;
   const chat = document.getElementById("chat");
   chat.scrollTop = chat.scrollHeight;
 }
@@ -331,6 +343,7 @@ async function send(spokenText) {
   if (!text) return;
   if (!spokenText) input.value = "";
   history.push({ role: "user", content: text });
+  if (history.length > 40) history.splice(0, history.length - 40);
   addMsg("user", text);
 
   const botDiv = addMsg("bot", "…");
@@ -509,6 +522,15 @@ sendBtn.addEventListener("click", () => send());
 input.addEventListener("keydown", (e) => {
   if (e.key === "Enter") send();
 });
+
+function newChat() {
+  history.length = 0;
+  messagesEl.innerHTML = "";
+  closePictureOverlay();
+  scrollBottom(true);
+  input.focus();
+}
+document.getElementById("newChatBtn").addEventListener("click", newChat);
 input.addEventListener("focus", () => {
   if (!micOn) setEye("listening");
 });
@@ -523,7 +545,7 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let micOn = false;
 let micWantOn = false;
 let micArmed = false;
-let micBusy = false;
+let ackPlaying = false;
 let recognition = null;
 let audioUnlocked = false;
 
@@ -647,13 +669,10 @@ function routeSpoken(text) {
   if (wakeAt >= 0) {
     const after = text.slice(wakeAt + "hermes".length).trim();
     if (after) return after;
+    if (ackPlaying) return undefined; // already answering a wake call
     micArmed = true;
-    if (!micBusy) {
-      micBusy = true;
-      setEye("listening", isGermanVoice() ? "JA?" : "YES?");
-      if (settings.speak !== false) speakAck();
-      micBusy = false;
-    }
+    setEye("listening", isGermanVoice() ? "JA?" : "YES?");
+    if (settings.speak !== false) speakAck();
     return undefined;
   }
 
@@ -692,8 +711,13 @@ function resumeAck(wasListening, wasArmed) {
 }
 
 async function speakAck() {
+  if (ackPlaying) return;
+  ackPlaying = true;
   const wasListening = micOn;
   const wasArmed = micArmed;
+  const finish = () => {
+    ackPlaying = false;
+  };
   try {
     if (micOn) pauseMic();
     const res = await fetch("/api/tts", {
@@ -702,6 +726,7 @@ async function speakAck() {
       body: JSON.stringify({ text: isGermanVoice() ? "Ja?" : "Yes?", engine: settings.voiceMode, voice: settings.piperVoice }),
     });
     if (!res.ok) {
+      finish();
       resumeAck(wasListening, wasArmed);
       return;
     }
@@ -711,12 +736,14 @@ async function speakAck() {
     audio.volume = parseFloat(settings.volume) || 1;
     const done = () => {
       URL.revokeObjectURL(url);
+      finish();
       resumeAck(wasListening, wasArmed);
     };
     audio.onended = done;
     audio.onerror = done;
     audio.play().catch(done);
   } catch (e) {
+    finish();
     resumeAck(wasListening, wasArmed);
   }
 }
@@ -740,7 +767,7 @@ const chatToggle = document.getElementById("chatToggle");
 chatToggle.addEventListener("click", () => {
   const hidden = document.body.classList.toggle("chat-hidden");
   chatToggle.textContent = hidden ? "▴ Show chat" : "▾ Hide chat";
-  if (!hidden) scrollBottom();
+  if (!hidden) scrollBottom(true);
 });
 chatToggle.textContent = document.body.classList.contains("chat-hidden") ? "▴ Show chat" : "▾ Hide chat";
 

@@ -1,0 +1,9 @@
+.git
+data
+settings.json
+*.log
+.env
+.env.example
+Dockerfile
+docker-compose.yml
+README.md

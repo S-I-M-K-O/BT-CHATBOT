@@ -444,6 +444,15 @@ button.small {
   border-color: var(--accent);
 }
 
+#newChatBtn {
+  opacity: 0.85;
+}
+
+#newChatBtn:hover {
+  opacity: 1;
+  border-color: var(--danger, #e05252);
+}
+
 .settings {
   position: fixed;
   top: 0;

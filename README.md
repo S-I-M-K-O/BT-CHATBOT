@@ -2,7 +2,7 @@
 
 > **HERMES** = *Holistic Emotive Reasoning & Multifunction Execution System* — a Vanguard-class assistant.
 
-This is my voice assistant, HERMES. He's a Pilot's kit through and through: Go backend in a Docker container, an animated mechanical eye watching you from the middle of the page, and a Piper voice that lives entirely on your machine. He answers fast, runs offline, and never phones home. No API keys required for any of the basics.
+This is my voice assistant, HERMES. A Go backend in a Docker container, an animated mechanical eye watching you from the middle of the page, and a Piper voice that lives entirely on your machine. He answers fast, runs offline, and never phones home. No API keys required for any of the basics.
 
 ## What he does
 
@@ -43,7 +43,7 @@ go run .
 # open http://localhost:8080
 ```
 
-One note: the server binds `0.0.0.0` by default, which means anything on your network can reach it — and it's holding your Mistral key. To keep it local-only, set `ADDR=127.0.0.1` (in your environment or `.env`).
+One note: the server binds `127.0.0.1` by default, so it's local-only out of the box. If you want to expose it to your network (the Docker Compose setup does this so the mapped port works), set `ADDR=0.0.0.0` — just be aware it's holding your Mistral key.
 
 ## The wake-word flow
 
@@ -66,7 +66,7 @@ Speech recognition works in Chrome/Edge; the mic button hides itself in other br
 
 ## Voice settings, in one breath
 
-- **HERMES (Piper)** — the default, fully local. The container ships the Piper binary and `voices/BT7274.onnx`.
+- **HERMES (Piper)** — the default, fully local. The container ships the Piper binary and the voice models in `voices/`. The UI lists every model folder in `voices/voices.json` (BT7274, PDA, ScorchAI, JarvisDE). JarvisDE is the German voice — when it's selected, HERMES greets, answers the wake word ("Ja?"), reads the weather/news, and searches/generates images in German.
 - **Browser** — pick any OS voice. For the classic robotic monotone, drop pitch to ~0.5 and rate to ~-0.3.
 
 ## Eye states
@@ -84,9 +84,12 @@ main.go          server: chat proxy, local KB, Piper TTS, settings, .env loader
 main_test.go     unit tests for the intent router, subject parsing, and local KB
 mistral.go       Mistral: real-time tools (weather/time/news) + image generation
 static/          the web UI (HTML/CSS/JS), eye, and wake-word mic
-voices/          Piper voice models (BT7274.onnx + config)
+voices/          one folder per Piper voice (BT7274/, PDA/, ScorchAI/, JarvisDE/)
+voices/voices.json  the voice catalog the UI lists
+data/            runtime state (settings.json, generated images) — not committed
 Dockerfile       multi-stage Go build + Debian runtime with bundled Piper
 docker-compose.yml
+.github/workflows/  CI (go vet + go test + build) on push/PR
 ```
 
 ## Testing & housekeeping

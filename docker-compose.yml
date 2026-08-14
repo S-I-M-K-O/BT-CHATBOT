@@ -6,6 +6,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - ADDR=0.0.0.0
       - OLLAMA_BASE=http://host.docker.internal:11434
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
       - MISTRAL_MODEL=${MISTRAL_MODEL:-mistral-medium-latest}

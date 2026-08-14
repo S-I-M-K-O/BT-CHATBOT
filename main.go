@@ -186,6 +186,26 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
+func clamp(v, lo, hi float64) float64 {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
 // cleanForTTS strips Markdown markers (emphasis, headings) so the Piper voice
 // does not read them out loud ("asterisk", "hash", ...).
 var (
@@ -396,7 +416,9 @@ func handleTTS(w http.ResponseWriter, r *http.Request) {
 
 	audio, err := piperTTS(req.Text, voice)
 	if err != nil {
-		http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 	w.Header().Set("Content-Type", "audio/wav")
@@ -465,6 +487,17 @@ func handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+	s.Temperature = clamp(s.Temperature, 0, 2)
+	s.MaxTokens = clampInt(s.MaxTokens, 16, 8192)
+	s.Pitch = clamp(s.Pitch, 0, 2)
+	s.Rate = clamp(s.Rate, 0.1, 3)
+	s.Volume = clamp(s.Volume, 0, 1)
+	if s.LocalModel == "" {
+		s.LocalModel = "qwen3.5:latest"
+	}
+	if s.VoiceMode != "piper" && s.VoiceMode != "browser" {
+		s.VoiceMode = "piper"
+	}
 	if err := saveSettings(&s); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		http.Error(w, `{"error": "could not save settings"}`, http.StatusInternalServerError)
@@ -476,7 +509,9 @@ func handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	loadDotEnv()
-	addr := envOr("ADDR", "0.0.0.0") + ":" + envOr("PORT", "8080")
+	// Local-only by default; docker-compose overrides to 0.0.0.0 so the mapped
+	// port stays reachable.
+	addr := envOr("ADDR", "127.0.0.1") + ":" + envOr("PORT", "8080")
 
 	if err := os.MkdirAll(genDir(), 0o755); err != nil {
 		log.Printf("could not create gen dir: %v", err)
