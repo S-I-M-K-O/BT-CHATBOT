@@ -36,24 +36,44 @@ func mistralEnabled() bool { return mistralKey() != "" }
 func genDir() string { return envOr("GEN_DIR", filepath.Join("data", "gen")) }
 
 var realtimeWords = []string{
+	// English
 	"weather", "forecast", "temperature", "temp", "raining", "rain", "snow",
 	"wind", "humidity", "sunny", "cloudy", "celsius", "degrees",
-	"time", "clock", "date", "today",
+	"time", "clock", "date",
 	"news", "headlines", "headline", "breaking",
+	// Deutsch
+	"wetter", "wetterbericht", "wettervorhersage", "temperatur", "regen",
+	"schnee", "wind", "luftfeuchtigkeit", "sonnig", "bewoelkt", "bewölkt",
+	"grad", "nebel",
+	"uhr", "datum", "wochentag", "spaet", "spät",
+	"nachrichten", "schlagzeilen",
 }
 
 var imageGenWords = []string{
 	"draw", "generate", "render", "create an image", "create a picture",
 	"make an image", "make a picture", "paint", "illustration", "concept art",
+	// Deutsch
+	"zeichne", "zeichnen", "generiere", "generieren", "erzeuge", "erzeugen",
+	"erstelle", "erstellen", "male", "malen", "illustration", "konzeptkunst",
+	"konzept art",
 }
 
 var imageSearchWords = []string{
 	"find", "search", "look up", "photo of", "photos of", "picture of",
 	"pictures of", "image of", "images of", "show me a", "show me pictures",
 	"show me some", "get a picture", "find a picture", "find a photo",
+	// Deutsch
+	"zeig mir", "zeige mir", "such nach", "suche nach", "such", "suche",
+	"finde mir", "finde", "finden", "bild von", "bilder von", "bild von einem",
+	"foto von", "fotos von", "ein bild", "ein foto", "bild", "bilder", "foto",
+	"fotos", "abbildung", "grafik",
 }
 
-var imagePlainWords = []string{"image", "picture", "photo", "pic", "drawing"}
+var imagePlainWords = []string{
+	"image", "picture", "photo", "pic", "drawing",
+	// Deutsch
+	"bild", "bilder", "bildern", "foto", "fotos", "fotografie", "abbildung", "grafik",
+}
 
 func wantsRealtime(q string) bool {
 	q = strings.ToLower(q)
@@ -124,11 +144,24 @@ func mistralGetBytes(path string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	rb, _ := io.ReadAll(resp.Body)
+	rb, err := io.ReadAll(io.LimitReader(resp.Body, maxDownloadBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(rb) > maxDownloadBytes {
+		return nil, fmt.Errorf("mistral %s: response exceeds %d bytes", path, maxDownloadBytes)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("mistral %s: %d: %s", path, resp.StatusCode, strings.TrimSpace(string(rb)))
 	}
 	return rb, nil
+}
+
+func voiceLang(voice string) string {
+	if isGermanVoice(voice) {
+		return "de"
+	}
+	return "en"
 }
 
 func handleMistralTools(w http.ResponseWriter, s *Settings, messages []chatMessage) {
@@ -165,7 +198,7 @@ func handleMistralTools(w http.ResponseWriter, s *Settings, messages []chatMessa
 			"parallel_tool_calls": true,
 		}, &resp); err != nil {
 			log.Printf("mistral chat error: %v", err)
-			writeSSE(w, "My satellite link is down, Pilot. Mistral could not be reached — check that MISTRAL_API_KEY is set.")
+			writeSSE(w, phrasesFor(s.PiperVoice).satelliteDown)
 			return
 		}
 		if len(resp.Choices) == 0 {
@@ -184,7 +217,7 @@ func handleMistralTools(w http.ResponseWriter, s *Settings, messages []chatMessa
 			break
 		}
 		for _, tc := range msg.ToolCalls {
-			result := executeMistralTool(tc.Function.Name, tc.Function.Arguments)
+			result := executeMistralTool(tc.Function.Name, tc.Function.Arguments, voiceLang(s.PiperVoice))
 			msgs = append(msgs, map[string]any{
 				"role":         "tool",
 				"tool_call_id": tc.ID,
@@ -194,7 +227,7 @@ func handleMistralTools(w http.ResponseWriter, s *Settings, messages []chatMessa
 		}
 	}
 	if final == "" {
-		final = "No data recovered from the satellite, Pilot. Try again."
+		final = phrasesFor(s.PiperVoice).noData
 	}
 	writeSSE(w, final)
 }
@@ -242,7 +275,7 @@ func mistralTools() []any {
 	}
 }
 
-func executeMistralTool(name, args string) string {
+func executeMistralTool(name, args, lang string) string {
 	var p struct {
 		City  string `json:"city"`
 		Topic string `json:"topic"`
@@ -252,9 +285,9 @@ func executeMistralTool(name, args string) string {
 	case "get_time":
 		return getTimeTool()
 	case "get_weather":
-		return getWeatherTool(p.City)
+		return getWeatherTool(p.City, lang)
 	case "get_news":
-		return getNewsTool(p.Topic)
+		return getNewsTool(p.Topic, lang)
 	}
 	return `{"error":"unknown tool"}`
 }
@@ -269,11 +302,11 @@ func getTimeTool() string {
 	return string(b)
 }
 
-func getWeatherTool(city string) string {
+func getWeatherTool(city, lang string) string {
 	if city == "" {
 		return `{"error":"no city provided"}`
 	}
-	lat, lon, name, err := geocodeCity(city)
+	lat, lon, name, err := geocodeCity(city, lang)
 	if err != nil {
 		b, _ := json.Marshal(map[string]string{"error": err.Error()})
 		return string(b)
@@ -303,8 +336,12 @@ func getWeatherTool(city string) string {
 	return string(b)
 }
 
-func geocodeCity(city string) (float64, float64, string, error) {
-	u := "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=" + url.QueryEscape(city)
+func geocodeCity(city, lang string) (float64, float64, string, error) {
+	l := "en"
+	if lang == "de" {
+		l = "de"
+	}
+	u := "https://geocoding-api.open-meteo.com/v1/search?count=1&language=" + l + "&format=json&name=" + url.QueryEscape(city)
 	var res struct {
 		Results []struct {
 			Latitude  float64 `json:"latitude"`
@@ -363,10 +400,14 @@ func wmoCondition(code int) string {
 	return "unknown conditions"
 }
 
-func getNewsTool(topic string) string {
-	feedURL := "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en"
+func getNewsTool(topic, lang string) string {
+	l, gl, ceid := "en-US", "US", "US:en"
+	if lang == "de" {
+		l, gl, ceid = "de-DE", "DE", "DE:de"
+	}
+	feedURL := "https://news.google.com/rss?hl=" + l + "&gl=" + gl + "&ceid=" + ceid
 	if topic != "" {
-		feedURL = "https://news.google.com/rss/search?q=" + url.QueryEscape(topic) + "&hl=en-US&gl=US&ceid=US:en"
+		feedURL = "https://news.google.com/rss/search?q=" + url.QueryEscape(topic) + "&hl=" + l + "&gl=" + gl + "&ceid=" + ceid
 	}
 	body, err := httpGet(feedURL)
 	if err != nil {
@@ -405,9 +446,20 @@ func getNewsTool(topic string) string {
 	return string(b)
 }
 
+// maxDownloadBytes caps bodies fetched from the network (weather, news, images)
+// so a huge response cannot blow up memory.
+const maxDownloadBytes = 25 << 20 // 25 MB
+
+// httpGetWithTimeout fetches a URL with a User-Agent (some APIs like Openverse
+// reject requests without one) and refuses bodies larger than maxDownloadBytes.
 func httpGetWithTimeout(u string, timeout time.Duration) ([]byte, error) {
 	client := &http.Client{Timeout: timeout}
-	resp, err := client.Get(u)
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "HERMES/1.0 (bt-chatbot voice assistant)")
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -415,7 +467,14 @@ func httpGetWithTimeout(u string, timeout time.Duration) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("http %d", resp.StatusCode)
 	}
-	return io.ReadAll(resp.Body)
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxDownloadBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxDownloadBytes {
+		return nil, fmt.Errorf("response exceeds %d bytes", maxDownloadBytes)
+	}
+	return data, nil
 }
 
 func httpGet(u string) ([]byte, error) {
@@ -430,15 +489,17 @@ func httpGetJSON(u string, out any) error {
 	return json.Unmarshal(b, out)
 }
 
-func handleMistralImage(w http.ResponseWriter, q string) {
+func handleMistralImage(w http.ResponseWriter, s *Settings, q string) {
 	sseBegin(w)
 	writeSSEJSON(w, map[string]any{"intent": "image"})
 	w.(http.Flusher).Flush()
 
+	p := phrasesFor(s.PiperVoice)
+
 	agentID, err := ensureImageAgent()
 	if err != nil {
 		log.Printf("mistral image agent error: %v", err)
-		writeSSE(w, "My image fabricator is offline, Pilot. Check the Mistral API key.")
+		writeSSE(w, p.imageFabricator)
 		return
 	}
 	var conv struct {
@@ -454,7 +515,7 @@ func handleMistralImage(w http.ResponseWriter, q string) {
 		"store":    false,
 	}, &conv); err != nil {
 		log.Printf("mistral image conversation error: %v", err)
-		writeSSE(w, "Image synthesis failed, Pilot. "+err.Error())
+		writeSSE(w, p.imageSynthesis+err.Error())
 		return
 	}
 
@@ -486,23 +547,32 @@ func handleMistralImage(w http.ResponseWriter, q string) {
 		}
 	}
 	if fileID == "" {
-		writeSSE(w, "The image came back empty, Pilot. Try a more specific request.")
+		writeSSE(w, p.imageEmpty)
 		return
 	}
 	data, err := mistralGetBytes("/v1/files/" + fileID + "/content")
 	if err != nil {
 		log.Printf("mistral image download error: %v", err)
-		writeSSE(w, "Could not retrieve the generated image, Pilot.")
+		writeSSE(w, p.imageRetrieve)
 		return
 	}
 	dir := genDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		writeSSE(w, "Could not store the generated image, Pilot.")
+		writeSSE(w, p.imageStore)
 		return
 	}
-	name := fmt.Sprintf("hermes_%d.png", time.Now().UnixNano())
+	ext := ".png"
+	switch http.DetectContentType(data) {
+	case "image/jpeg":
+		ext = ".jpg"
+	case "image/gif":
+		ext = ".gif"
+	case "image/webp":
+		ext = ".webp"
+	}
+	name := fmt.Sprintf("hermes_%d%s", time.Now().UnixNano(), ext)
 	if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
-		writeSSE(w, "Could not store the generated image, Pilot.")
+		writeSSE(w, p.imageStore)
 		return
 	}
 
@@ -527,14 +597,16 @@ func streamSSE(w http.ResponseWriter, text string) {
 	}
 }
 
-func handleImageSearch(w http.ResponseWriter, q string) {
+func handleImageSearch(w http.ResponseWriter, s *Settings, q string) {
 	sseBegin(w)
 	writeSSEJSON(w, map[string]any{"intent": "image"})
 	w.(http.Flusher).Flush()
 
+	p := phrasesFor(s.PiperVoice)
+
 	subject := extractImageSubject(q)
 	if subject == "" {
-		writeSSE(w, "What should I search for, Pilot?")
+		writeSSE(w, p.searchNoSubject)
 		return
 	}
 	u := "https://api.openverse.org/v1/images/?page_size=3&q=" + url.QueryEscape(subject)
@@ -545,12 +617,12 @@ func handleImageSearch(w http.ResponseWriter, q string) {
 		} `json:"results"`
 	}
 	if err := httpGetJSON(u, &res); err != nil || len(res.Results) == 0 {
-		writeSSE(w, "No pictures found on the network, Pilot. Try a different subject.")
+		writeSSE(w, p.searchEmpty)
 		return
 	}
 	dir := genDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		writeSSE(w, "Could not store the pictures, Pilot.")
+		writeSSE(w, p.searchStore)
 		return
 	}
 	var urls []string
@@ -579,10 +651,10 @@ func handleImageSearch(w http.ResponseWriter, q string) {
 		urls = append(urls, "/gen/"+name)
 	}
 	if len(urls) == 0 {
-		writeSSE(w, "Found pictures but could not download them, Pilot.")
+		writeSSE(w, p.searchDownload)
 		return
 	}
-	streamSSE(w, fmt.Sprintf("Found %d pictures of %s, Pilot.", len(urls), subject))
+	streamSSE(w, fmt.Sprintf(p.searchFound, len(urls), subject))
 	for _, u := range urls {
 		writeSSEJSON(w, map[string]any{"image": u})
 	}
@@ -592,7 +664,11 @@ func handleImageSearch(w http.ResponseWriter, q string) {
 
 func extractImageSubject(q string) string {
 	q = strings.ToLower(strings.TrimSpace(q))
-	for _, p := range []string{"show me", "find me", "look up", "search for", "get me", "can you show", "show"} {
+	for _, p := range []string{
+		"zeig mir ein", "zeige mir ein", "zeig mir", "zeige mir", "such nach",
+		"suche nach", "finde mir", "finde", "suche", "show me", "find me", "find",
+		"look up", "search for", "get me", "can you show", "show",
+	} {
 		if strings.HasPrefix(q, p) {
 			q = strings.TrimSpace(q[len(p):])
 			break
@@ -602,6 +678,11 @@ func extractImageSubject(q string) string {
 		"a": true, "an": true, "the": true, "of": true, "for": true, "me": true,
 		"picture": true, "pictures": true, "photo": true, "photos": true,
 		"image": true, "images": true, "some": true, "any": true, "please": true,
+		"ein": true, "eine": true, "einen": true, "einem": true, "einer": true,
+		"eines": true, "der": true, "die": true, "das": true, "den": true,
+		"dem": true, "des": true, "mir": true, "bitte": true, "mal": true,
+		"etwas": true, "von": true, "bild": true, "bilder": true, "bildern": true,
+		"foto": true, "fotos": true, "abbildung": true, "grafik": true,
 	}
 	var kept []string
 	for _, w := range strings.Fields(q) {

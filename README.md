@@ -2,95 +2,75 @@
 
 > **HERMES** = *Holistic Emotive Reasoning & Multifunction Execution System* — a Vanguard-class assistant.
 
-A fully local, voice-activated AI chatbot for your web browser. Runs in a Docker container, built in Go, with a customizable voice and an animated mechanical eye. No API keys required anywhere.
+This is my voice assistant, HERMES. A Go backend in a Docker container, an animated mechanical eye watching you from the middle of the page, and a Piper voice that lives entirely on your machine. He answers fast, runs offline, and never phones home. No API keys required for any of the basics.
 
-## Features
+## What he does
 
-- **Chat with HERMES** via a web frontend.
-- **Always-on microphone**: click 🎤 to enable continuous listening. HERMES ignores everything until you say **"Hermes"** — then it waits for your question or statement (or you can say "Hermes <question>" in one go). Toggle off in Settings if you prefer.
-- **Animated visor eye** in the center of the page that reacts: idle, awaiting call, thinking (while streaming an answer), speaking (while HERMES talks), and confused/error (when something fails).
-- **Local LLM (Ollama)** — chat runs through a local Ollama instance (default model `qwen3.5:latest`). Nothing leaves your machine.
-- **Local Piper voice** — a Piper TTS model runs fully locally inside the container. Files are vendored in `voices/`.
-- **Real-time data via Mistral (optional)** — set `MISTRAL_API_KEY` and questions about the **weather** (Open-Meteo), **time/date**, and the **news** (Google News feeds) are answered live via Mistral function calling.
-- **Images — search or generate**:
-  - *Search the internet* for real photos (free, no key — Openverse/CC): "find a picture of …", "show me a photo of …".
-  - *Generate* images with Mistral (needs `MISTRAL_API_KEY`): "draw …", "generate an image of …".
-- **Local knowledge base**: greetings and common phrases answered instantly, offline.
-- **Adjustable voice** (in the ⚙ Settings panel):
-  - *HERMES (local Piper)*: the default model voice, runs on-device.
-  - *Browser voice (OS)*: any installed voice with pitch / rate / volume sliders.
-- **Customizable settings** (model, system prompt, temperature, max tokens, voice) saved to disk and applied on the fly.
+You can type to him or just talk. The mic button (the little HERMES visor icon, bottom-left of the chat) is on by default, and it's the *always-on* kind — he ignores you completely until you say **"Hermes"**. Then it's over to you. Say the thing right away ("Hermes what time is it") or say just his name and wait for the eye to flip to *"YES?"* before you speak.
 
-## Prerequisites
+The eye is basically his mood ring: a slow idle drift when he's got nothing to do, scanning while he thinks, pulsing while he talks, and a nervous jitter whenever something breaks.
 
-- Docker + Docker Compose
-- [Ollama](https://ollama.com) running on the host, with a model pulled, e.g.:
-  ```bash
-  ollama pull qwen3.5:latest
-  ```
+He's local-first. Regular chat runs through your own Ollama instance (default model `qwen3.5:latest`) — none of that goes anywhere. The voice is Piper, which runs inside the container; the models are bundled in `voices/`. For the small talk — greetings and the like — he doesn't even bother the model, just answers from a short built-in list so he's never slow to say hi.
 
-## Run
+Optional extras, in case you want them:
+
+- **Live data.** Drop a `MISTRAL_API_KEY` in a local `.env` and he stops guessing about the weather (Open-Meteo), the current time, or the news (Google News RSS).
+- **Pictures.** "Find a picture of…" pulls up to three real photos from Openverse (Creative Commons) — no key needed for that. With a Mistral key, "draw…" or "generate an image of…" will actually make one.
+- **Voice choice.** The default is HERMES's own Piper voice, but you can switch to any browser/OS voice and fiddle with pitch, rate and volume. Everything else — model, system prompt, temperature, max tokens — is editable in the ⚙ Settings panel, saved to disk, applied on the fly.
+
+If you skip the Mistral key, live questions and image generation just fall back to the local Ollama model. (Image search keeps working regardless.)
+
+## Getting it running
+
+You'll need Docker (with Compose) and a local [Ollama](https://ollama.com) with a model pulled:
+
+```bash
+ollama pull qwen3.5:latest
+```
+
+Then:
 
 ```bash
 docker compose up -d --build
 ```
 
-Open http://localhost:8080
+and open http://localhost:8080.
 
-The container reaches the host Ollama via `host.docker.internal` (set in `docker-compose.yml`). To run the Go server directly on the host instead:
+The container reaches your host Ollama via `host.docker.internal` (that's wired up in `docker-compose.yml`). If you'd rather run the Go server directly on the host, skip Docker:
 
 ```bash
 go run .
 # open http://localhost:8080
 ```
 
-## Real-time data & images (Mistral)
+One note: the server binds `127.0.0.1` by default, so it's local-only out of the box. If you want to expose it to your network (the Docker Compose setup does this so the mapped port works), set `ADDR=0.0.0.0` — just be aware it's holding your Mistral key.
 
-Set `MISTRAL_API_KEY` (in a local `.env`, which is gitignored) to enable:
+## The wake-word flow
 
-- **Weather / time / news** — HERMES detects these intents and uses Mistral's
-  function calling with live tools (Open-Meteo for weather, the server clock
-  for time, Google News RSS for headlines).
-- **Image generation** — "draw …", "generate an image of …" produces an image
-  via Mistral's image tool and shows it inline in the chat.
+Speech recognition works in Chrome/Edge; the mic button hides itself in other browsers. Click it, say **"Hermes"**, and the eye answers *"YES?"*. Then ask away — he'll talk back. He pauses his own listening while he speaks so he doesn't hear himself, then picks right back up.
 
-**Image search needs no key.** Ask to *find a picture / photo of …* and HERMES
-pulls real photos from Openverse (Creative Commons) and shows up to three inline.
+## How a message flows
 
-Without a key, real-time questions and generation fall back to the local Ollama
-model as before; image search still works. The Mistral model is configurable via
-`MISTRAL_MODEL` (default `mistral-medium-latest`).
-
-## Wake-word voice input
-
-- Click the 🎤 button (Chrome/Edge support speech recognition; the button is hidden otherwise).
-- Say **"Hermes"** — the eye will show "YES, PILOT?" and await your question.
-- Speak your question or statement; HERMES answers aloud.
-- You can also say "Hermes what time is it" as one phrase.
-- HERMES pauses listening while speaking so it doesn't hear itself, then resumes.
-
-## How the local lookup works
-
-The Go backend (`main.go`) first checks a small built-in knowledge base (greetings, and so on). Only if there's no local match does it call the local Ollama model with your saved system prompt and stream the response.
+`main.go` checks the built-in knowledge base first (the greetings and such). No match? Then it passes the question to your local Ollama with the saved system prompt and streams the reply. If Mistral is enabled and the question smells like weather/time/news or image generation, it's routed over there instead.
 
 ## Endpoints
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| POST | `/api/chat` | Chat; streams SSE. Local KB, Mistral (real-time/images), or Ollama fallback. |
-| POST | `/api/tts` | Text-to-speech (local Piper). |
-| GET/POST | `/api/settings` | Read / persist settings (JSON). |
-| GET | `/` | Web UI (chat + mechanical eye). |
-| GET | `/gen/…` | Serves generated images (written to `data/gen/`). |
+| POST | `/api/chat` | Chat, streaming SSE. Local KB → Mistral (real-time/images) → Ollama. |
+| POST | `/api/tts` | Text-to-speech via local Piper. |
+| GET/POST | `/api/settings` | Read and persist settings (JSON). |
+| GET | `/api/health` | Liveness probe (what the Docker healthcheck hits). |
+| GET | `/` | The web UI. |
+| GET | `/gen/…` | Serves generated images from `data/gen/`. |
 
-## Voice settings quick guide
+## Voice settings, in one breath
 
-- **HERMES (Piper)** — default. Runs fully locally; the container bundles the Piper binary + `voices/BT7274.onnx`.
-- **Browser engine** — pick a voice, drop pitch to ~0.5 and rate to ~-0.3 for a more robotic monotone.
+- **HERMES (Piper)** — the default, fully local. The container ships the Piper binary and the voice models in `voices/`. The UI lists every model folder in `voices/voices.json` (BT7274, PDA, ScorchAI, JarvisDE). JarvisDE is the German voice — when it's selected, HERMES greets, answers the wake word ("Ja?"), reads the weather/news, and searches/generates images in German.
+- **Browser** — pick any OS voice. For the classic robotic monotone, drop pitch to ~0.5 and rate to ~-0.3.
 
 ## Eye states
 
-The visor in the center of the page reflects HERMES' state:
 - **READY** — idle, slow drift
 - **AWAITING CALL** — listening for "Hermes"
 - **PROCESSING** — rapid scanning while the answer streams
@@ -100,10 +80,24 @@ The visor in the center of the page reflects HERMES' state:
 ## Repo layout
 
 ```
-main.go          Go server: chat proxy, local KB, Piper TTS, settings, .env loader
-mistral.go       Mistral integration: real-time tools (weather/time/news) + image generation
-static/          Web UI (HTML/CSS/JS) with the animated eye + wake-word mic
-voices/          Piper voice model (BT7274.onnx + config)
-Dockerfile       Multi-stage: Go build + Debian runtime with bundled Piper
+main.go          server: chat proxy, local KB, Piper TTS, settings, .env loader
+main_test.go     unit tests for the intent router, subject parsing, and local KB
+mistral.go       Mistral: real-time tools (weather/time/news) + image generation
+static/          the web UI (HTML/CSS/JS), eye, and wake-word mic
+voices/          one folder per Piper voice (BT7274/, PDA/, ScorchAI/, JarvisDE/)
+voices/voices.json  the voice catalog the UI lists
+data/            runtime state (settings.json, generated images) — not committed
+Dockerfile       multi-stage Go build + Debian runtime with bundled Piper
 docker-compose.yml
+.github/workflows/  CI (go vet + go test + build) on push/PR
 ```
+
+## Testing & housekeeping
+
+```bash
+go test ./...
+```
+
+There are unit tests for the parts that can't be eyeballed: the knowledge base, the search-vs-generate image routing, subject parsing, and the WMO weather-code mapping. Run `go vet ./...` before committing.
+
+A few things I tidied up along the way: images in `data/gen/` self-clean after 24 hours, settings are written atomically (temp file + rename, so a crash can't corrupt `settings.json`), external downloads are capped at 25 MB each, and static assets get conditional caching so the browser does 304s instead of re-downloading everything.
