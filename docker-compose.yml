@@ -4,9 +4,12 @@ services:
     container_name: bt-chatbot
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      # Bound to loopback: the API has no auth. Use "8080:8080" (and ALLOWED_HOSTS)
+      # only if you deliberately want HERMES reachable from your LAN.
+      - "127.0.0.1:8080:8080"
     environment:
       - ADDR=0.0.0.0
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-}
       - OLLAMA_BASE=http://host.docker.internal:11434
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
       - MISTRAL_MODEL=${MISTRAL_MODEL:-mistral-medium-latest}

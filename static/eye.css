@@ -1,0 +1,117 @@
+/* =====================================================================
+   HERMES eye — styles for the SVG optic (#eye) and its surroundings.
+   Motion of pupil / glow / rings / scan lines is driven by eye.js
+   (requestAnimationFrame + springs). CSS here only handles:
+     - which design is visible
+     - smooth colour / filter transitions between states
+     - the ambient glow behind the eye (.eye-ambient, injected by eye.js)
+     - the banner text swap animation (.eyebanner.swap)
+   ===================================================================== */
+
+/* only the active pilot design is rendered */
+#eye .design { display: none; }
+#eye[data-design="classic"] .design[data-el="classic"],
+#eye[data-design="cyclops"] .design[data-el="cyclops"],
+#eye[data-design="iris"] .design[data-el="iris"],
+#eye[data-design="cortana"] .design[data-el="cortana"] {
+  display: block;
+}
+
+#eye {
+  overflow: visible;
+  position: relative;
+  /* State colour grading glides instead of snapping. This ID rule beats
+     `.eye` in style.css and `transition` is a shorthand, so it must repeat
+     the eye/chat split's height transition or that would snap. */
+  transition: filter 0.6s ease, height var(--t-slow, 320ms) var(--ease, ease);
+}
+/* while the splitter is dragged the height must follow the pointer 1:1
+   (mirrors `body.resizing .eye` in style.css, which #eye outranks) */
+body.resizing #eye {
+  transition: filter 0.6s ease;
+}
+
+/* The confused and error filters use the SAME function list in the SAME
+   order (neutral values where a state does not use a function). Otherwise
+   CSS cannot interpolate between them and confused <-> error snaps. */
+
+/* STATE: confused — warm red tint + faint red halo */
+#eye[data-state="confused"] {
+  filter: sepia(0.9) saturate(2.6) hue-rotate(-28deg) grayscale(0) brightness(1) drop-shadow(0 0 14px rgba(255, 80, 50, 0.45));
+}
+
+/* STATE: error / offline — dim and desaturate */
+#eye[data-state="error"] {
+  filter: sepia(0) saturate(1) hue-rotate(0deg) grayscale(0.85) brightness(0.6) drop-shadow(0 0 0 rgba(255, 80, 50, 0));
+}
+
+/* Fallback when eye.js has not taken over (no JS): keep a gentle glow
+   pulse so the eye never looks dead. eye.js adds .eye-live on init. */
+#eye:not(.eye-live) .glow { animation: eye-fallback-pulse 3s ease-in-out infinite; }
+@keyframes eye-fallback-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+/* ---------- ambient light behind the eye ---------- */
+
+@property --eye-ambient {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #39b6ff;
+}
+
+.eyezone {
+  position: relative;
+  isolation: isolate;
+  --eye-ambient: #39b6ff;
+  transition: --eye-ambient 0.6s ease;
+}
+
+.eyezone[data-design="cyclops"] { --eye-ambient: #ffa62e; }
+.eyezone[data-design="iris"]    { --eye-ambient: #a46bff; }
+.eyezone[data-design="cortana"] { --eye-ambient: #7a9dff; }
+.eyezone[data-state="confused"] { --eye-ambient: #ff5a3c; }
+.eyezone[data-state="error"]    { --eye-ambient: #e5484d; }
+
+.eye-ambient {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: min(100%, 980px);
+  aspect-ratio: 1.7;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(closest-side,
+              color-mix(in srgb, var(--eye-ambient) 30%, transparent) 0%,
+              color-mix(in srgb, var(--eye-ambient) 10%, transparent) 55%,
+              transparent 100%);
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.6;
+  will-change: opacity;
+}
+
+/* ---------- banner ---------- */
+
+.eyebanner { transition: color 0.4s ease; }
+#eyezone[data-state="listening"] .eyebanner,
+#eyezone[data-state="thinking"] .eyebanner { color: var(--accent); }
+#eyezone[data-state="speaking"] .eyebanner { color: #9bdcff; }
+#eyezone[data-state="confused"] .eyebanner { color: #ff6a5c; }
+#eyezone[data-state="error"] .eyebanner { color: #e5484d; }
+
+/* Text-change animation. Usage (app.js):
+     el.textContent = next;
+     el.classList.remove("swap"); void el.offsetWidth; el.classList.add("swap");
+*/
+.eyebanner.swap { animation: eyebanner-swap 0.32s cubic-bezier(0.2, 0.7, 0.2, 1); }
+@keyframes eyebanner-swap {
+  from { opacity: 0; transform: translateY(4px); letter-spacing: 6px; }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #eye:not(.eye-live) .glow { animation: none; }
+  .eyebanner.swap { animation: eyebanner-fade 0.3s ease; }
+  @keyframes eyebanner-fade { from { opacity: 0; } to { opacity: 1; } }
+}

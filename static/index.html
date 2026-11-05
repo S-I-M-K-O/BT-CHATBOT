@@ -2,23 +2,56 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HERMES — Vanguard Class - Assistant</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b1017">
+<meta name="description" content="HERMES — a local, voice-driven Vanguard-class assistant.">
+<title>HERMES — Vanguard Class Assistant</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="stylesheet" href="/style.css?v=18">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/eye.css">
 </head>
 <body class="chat-hidden">
+<a class="skip-link" href="#msgInput">Skip to message input</a>
+
 <header class="topbar">
   <div class="brand">
-    <span class="status-dot" id="statusDot"></span>
+    <span class="status-dot" id="statusDot" aria-hidden="true"></span>
     <h1>HERMES</h1>
-    <span class="tag">Vanguard Class - Assistant</span>
+    <span class="tag">Vanguard Class · Assistant</span>
   </div>
-  <button id="settingsBtn" title="Settings">⚙ Settings</button>
+
+  <div class="pills" id="statusPills" aria-label="System status">
+    <button type="button" class="pill" id="pillOllama" data-state="unknown">
+      <span class="pill-dot" aria-hidden="true"></span><span class="pill-label">Brain</span>
+    </button>
+    <button type="button" class="pill" id="pillVoice" data-state="unknown">
+      <span class="pill-dot" aria-hidden="true"></span><span class="pill-label">Voice</span>
+    </button>
+    <button type="button" class="pill" id="pillSat" data-state="unknown">
+      <span class="pill-dot" aria-hidden="true"></span><span class="pill-label">Satellite</span>
+    </button>
+  </div>
+
+  <div class="top-actions">
+    <button type="button" class="icon-btn" id="exportBtn" title="Export chat as Markdown" aria-label="Export chat as Markdown">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 19h16" /></svg>
+    </button>
+    <button type="button" class="icon-btn" id="eyeModeBtn" title="Eye mode — show only the eye (E)" aria-label="Eye mode" aria-pressed="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><circle cx="12" cy="12" r="2.6"/></svg>
+    </button>
+    <button type="button" class="icon-btn" id="helpBtn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>
+    </button>
+    <button type="button" class="icon-btn" id="settingsBtn" title="Settings (Ctrl+,)" aria-label="Settings" aria-controls="settingsPanel" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>
+      <span class="dirty-dot" aria-hidden="true"></span>
+    </button>
+  </div>
 </header>
 
-<section class="eyezone" id="eyezone">
-  <svg class="eye" id="eye" viewBox="0 0 420 260" aria-label="HERMES visor">
+<section class="eyezone" id="eyezone" aria-label="HERMES">
+  <svg class="eye" id="eye" viewBox="0 0 420 260" role="img" aria-label="HERMES optic" data-design="classic" data-state="idle">
     <defs>
       <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="#2a3440"/>
@@ -29,391 +62,709 @@
         <stop offset="0%" stop-color="#4d5a68"/>
         <stop offset="100%" stop-color="#232a33"/>
       </linearGradient>
-      <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#7fd4ff" stop-opacity="0.9"/>
-        <stop offset="40%" stop-color="#2ea8e6" stop-opacity="0.6"/>
-        <stop offset="100%" stop-color="#2ea8e6" stop-opacity="0"/>
+      <!-- BT-7274 (classic) -->
+      <linearGradient id="btArmor" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#5b6357"/>
+        <stop offset="45%" stop-color="#3d433c"/>
+        <stop offset="100%" stop-color="#1f231f"/>
+      </linearGradient>
+      <linearGradient id="btBrow" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#6f7869"/>
+        <stop offset="100%" stop-color="#454c43"/>
+      </linearGradient>
+      <linearGradient id="btSide" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#555d51"/>
+        <stop offset="100%" stop-color="#30352f"/>
+      </linearGradient>
+      <linearGradient id="btCheek" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#3a4039"/>
+        <stop offset="100%" stop-color="#1a1d1a"/>
+      </linearGradient>
+      <linearGradient id="btRecess" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#000"/>
+        <stop offset="100%" stop-color="#424a40"/>
+      </linearGradient>
+      <radialGradient id="btBezel" cx="50%" cy="38%" r="62%">
+        <stop offset="70%" stop-color="#2a302d"/>
+        <stop offset="88%" stop-color="#181c1b"/>
+        <stop offset="100%" stop-color="#0c0e0e"/>
       </radialGradient>
-      <radialGradient id="irisGrad" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#051018"/>
-        <stop offset="70%" stop-color="#0a1a26"/>
-        <stop offset="100%" stop-color="#123040"/>
+      <radialGradient id="btBolt" cx="35%" cy="35%" r="65%">
+        <stop offset="0%" stop-color="#9aa392"/>
+        <stop offset="60%" stop-color="#3c4239"/>
+        <stop offset="100%" stop-color="#151815"/>
       </radialGradient>
-      <linearGradient id="scorchVisor" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#ffc06a"/>
-        <stop offset="100%" stop-color="#cf6a12"/>
+      <radialGradient id="btAmberGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffae3b" stop-opacity="0.75"/>
+        <stop offset="100%" stop-color="#ff7a00" stop-opacity="0"/>
+      </radialGradient>
+      <pattern id="btHazard" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <rect width="8" height="8" fill="#16130c"/>
+        <rect width="4" height="8" fill="#e8a317"/>
+      </pattern>
+      <radialGradient id="btSpill" cx="50%" cy="50%" r="50%">
+        <stop offset="52%" stop-color="#39b6ff" stop-opacity="0.32"/>
+        <stop offset="75%" stop-color="#39b6ff" stop-opacity="0.08"/>
+        <stop offset="100%" stop-color="#39b6ff" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="btRing" x1="0.2" y1="0" x2="0.8" y2="1">
+        <stop offset="0%" stop-color="#c8f2ff"/>
+        <stop offset="45%" stop-color="#5cc6ff"/>
+        <stop offset="100%" stop-color="#1f86d8"/>
       </linearGradient>
-      <linearGradient id="cyclopsHull" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#e7c23f"/>
-        <stop offset="55%" stop-color="#c79a22"/>
-        <stop offset="100%" stop-color="#8a6a14"/>
+      <radialGradient id="btGlass" cx="44%" cy="38%" r="65%">
+        <stop offset="0%" stop-color="#16567f"/>
+        <stop offset="45%" stop-color="#0b2f4d"/>
+        <stop offset="85%" stop-color="#041321"/>
+        <stop offset="100%" stop-color="#0d3a5e"/>
+      </radialGradient>
+      <radialGradient id="btHalo" cx="50%" cy="50%" r="50%">
+        <stop offset="55%" stop-color="#39b6ff" stop-opacity="0.45"/>
+        <stop offset="100%" stop-color="#39b6ff" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="btInner" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#03101b"/>
+        <stop offset="70%" stop-color="#082640"/>
+        <stop offset="100%" stop-color="#11446c"/>
+      </radialGradient>
+      <radialGradient id="btCoreGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#e8f9ff"/>
+        <stop offset="35%" stop-color="#8fdcff" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#39b6ff" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="btSpec" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
       </linearGradient>
-      <linearGradient id="cyclopsVisor" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#ffd98a"/>
-        <stop offset="100%" stop-color="#d98710"/>
+      <filter id="btGlow" x="-25%" y="-25%" width="150%" height="150%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <!-- Cyclops (amber single-lens sentinel) -->
+      <radialGradient id="cyHousing" cx="50%" cy="32%" r="72%">
+        <stop offset="0%" stop-color="#3d3b36"/>
+        <stop offset="60%" stop-color="#1c1c1a"/>
+        <stop offset="100%" stop-color="#0b0b0a"/>
+      </radialGradient>
+      <linearGradient id="cyEdge" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#8a857a"/>
+        <stop offset="100%" stop-color="#1a1a18"/>
       </linearGradient>
-      <linearGradient id="irisVisor" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#d8acff"/>
-        <stop offset="100%" stop-color="#7a3fd6"/>
+      <linearGradient id="cyBarrel" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#4c4942"/>
+        <stop offset="50%" stop-color="#201f1c"/>
+        <stop offset="100%" stop-color="#3a3832"/>
       </linearGradient>
-      <linearGradient id="radarVisor" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#8fe3ff"/>
-        <stop offset="100%" stop-color="#1e7fb8"/>
+      <linearGradient id="cyRing" x1="0.2" y1="0" x2="0.8" y2="1">
+        <stop offset="0%" stop-color="#ffe6ad"/>
+        <stop offset="45%" stop-color="#ffab2e"/>
+        <stop offset="100%" stop-color="#d9620b"/>
       </linearGradient>
-      <linearGradient id="mantisVisor" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#ff9a82"/>
-        <stop offset="100%" stop-color="#c2342a"/>
+      <radialGradient id="cyGlass" cx="42%" cy="36%" r="68%">
+        <stop offset="0%" stop-color="#4a2a08"/>
+        <stop offset="50%" stop-color="#211103"/>
+        <stop offset="88%" stop-color="#080401"/>
+        <stop offset="100%" stop-color="#3a2206"/>
+      </radialGradient>
+      <radialGradient id="cyHalo" cx="50%" cy="50%" r="50%">
+        <stop offset="45%" stop-color="#ff9d1f" stop-opacity="0.5"/>
+        <stop offset="100%" stop-color="#ff9d1f" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="cyCore" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#fff6dc"/>
+        <stop offset="35%" stop-color="#ffc861" stop-opacity="0.95"/>
+        <stop offset="100%" stop-color="#ff8a00" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="cySpill" cx="50%" cy="50%" r="50%">
+        <stop offset="50%" stop-color="#ffa12e" stop-opacity="0.28"/>
+        <stop offset="75%" stop-color="#ffa12e" stop-opacity="0.07"/>
+        <stop offset="100%" stop-color="#ffa12e" stop-opacity="0"/>
+      </radialGradient>
+      <clipPath id="cyLensClip"><circle cx="210" cy="128" r="76"/></clipPath>
+      <!-- Iris (violet mechanical aperture) -->
+      <radialGradient id="irBack" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#f1e2ff"/>
+        <stop offset="25%" stop-color="#b98cff"/>
+        <stop offset="60%" stop-color="#5a24b8"/>
+        <stop offset="100%" stop-color="#14052e"/>
+      </radialGradient>
+      <linearGradient id="irBlade" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#434859"/>
+        <stop offset="55%" stop-color="#1c202b"/>
+        <stop offset="100%" stop-color="#0c0e14"/>
       </linearGradient>
+      <linearGradient id="irRing" x1="0.2" y1="0" x2="0.8" y2="1">
+        <stop offset="0%" stop-color="#f3e4ff"/>
+        <stop offset="45%" stop-color="#b07cff"/>
+        <stop offset="100%" stop-color="#6a2fd6"/>
+      </linearGradient>
+      <radialGradient id="irCore" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffffff"/>
+        <stop offset="35%" stop-color="#dcc2ff" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#9a5cff" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="irSpill" cx="50%" cy="50%" r="50%">
+        <stop offset="50%" stop-color="#a46bff" stop-opacity="0.28"/>
+        <stop offset="75%" stop-color="#a46bff" stop-opacity="0.07"/>
+        <stop offset="100%" stop-color="#a46bff" stop-opacity="0"/>
+      </radialGradient>
+      <!-- Cortana (holographic AI construct) -->
+      <linearGradient id="coLine" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#6fe3ff"/>
+        <stop offset="50%" stop-color="#8aa8ff"/>
+        <stop offset="100%" stop-color="#c38bff"/>
+      </linearGradient>
+      <radialGradient id="coIris" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#04102a"/>
+        <stop offset="45%" stop-color="#1a4fb8"/>
+        <stop offset="80%" stop-color="#5b5cf0"/>
+        <stop offset="100%" stop-color="#b27dff"/>
+      </radialGradient>
+      <radialGradient id="coHalo" cx="50%" cy="50%" r="50%">
+        <stop offset="60%" stop-color="#5aa8ff" stop-opacity="0.45"/>
+        <stop offset="100%" stop-color="#5aa8ff" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="coCore" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffffff"/>
+        <stop offset="40%" stop-color="#9be8ff" stop-opacity="0.95"/>
+        <stop offset="100%" stop-color="#5aa8ff" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="coField" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#3d7bff" stop-opacity="0.3"/>
+        <stop offset="55%" stop-color="#7a5cff" stop-opacity="0.12"/>
+        <stop offset="100%" stop-color="#7a5cff" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="coFadeGrad" cx="50%" cy="50%" r="50%">
+        <stop offset="20%" stop-color="#fff"/>
+        <stop offset="100%" stop-color="#000"/>
+      </radialGradient>
+      <mask id="coFade"><rect x="40" y="0" width="340" height="260" fill="url(#coFadeGrad)"/></mask>
+      <pattern id="coHex" width="10" height="17.32" patternUnits="userSpaceOnUse">
+        <path d="M5 0 L10 2.89 L10 8.66 L5 11.55 L0 8.66 L0 2.89 Z M5 11.55 L5 17.32" fill="none" stroke="#5a92ff" stroke-width="0.6"/>
+      </pattern>
+      <pattern id="coScan" width="4" height="3" patternUnits="userSpaceOnUse">
+        <rect width="4" height="1" fill="#9fdcff"/>
+      </pattern>
+      <clipPath id="coEyeClip"><path d="M92 128 C140 54 280 54 328 128 C280 202 140 202 92 128 Z"/></clipPath>
     </defs>
 
     <g class="eye-core" id="eyeCore">
 
-      <!-- ===== DESIGN: classic (BT-7274, original round mechanical eye) ===== -->
+      <!-- ===== DESIGN: classic (BT-7274 — Vanguard-class optic, Titanfall 2) ===== -->
       <g class="design" data-el="classic">
-        <!-- armor housing -->
-        <path d="M70 30 L350 30 L398 128 L350 226 L70 226 L22 128 Z"
-              fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="4"/>
-        <path d="M66 36 L354 36 L398 128 L354 220 L66 220 L22 128 Z"
-              fill="none" stroke="#0a0e14" stroke-width="8" opacity="0.6"/>
+        <!-- head silhouette: wide gunmetal block, flat top, chamfered corners -->
+        <path d="M100 16 L320 16 L370 38 L396 92 L398 158 L366 214 L302 246 L118 246 L54 214 L22 158 L24 92 L50 38 Z"
+              fill="url(#btArmor)" stroke="#0b0d0c" stroke-width="3" stroke-linejoin="round"/>
+        <!-- top brow plate (catches the light) -->
+        <path d="M104 22 L316 22 L360 42 L330 62 L90 62 L60 42 Z" fill="url(#btBrow)"/>
+        <path d="M104 22 L316 22 L360 42" fill="none" stroke="#8b9483" stroke-width="1.5" opacity="0.55"/>
+        <!-- upper side plates -->
+        <path d="M30 94 L54 44 L84 52 L64 104 Z" fill="url(#btSide)"/>
+        <path d="M390 94 L366 44 L336 52 L356 104 Z" fill="url(#btSide)"/>
+        <!-- angled cheek plates -->
+        <path d="M26 158 L58 210 L120 240 L140 218 L94 192 L64 148 Z" fill="url(#btCheek)"/>
+        <path d="M394 158 L362 210 L300 240 L280 218 L326 192 L356 148 Z" fill="url(#btCheek)"/>
+        <path d="M64 148 L94 192 L140 218" fill="none" stroke="#7d8676" stroke-width="1.2" opacity="0.35"/>
+        <path d="M356 148 L326 192 L280 218" fill="none" stroke="#7d8676" stroke-width="1.2" opacity="0.35"/>
+        <!-- panel seams -->
+        <g fill="none" stroke="#0d0f0e" stroke-width="2" opacity="0.85">
+          <path d="M30 94 L64 104 L64 148 L26 158"/>
+          <path d="M390 94 L356 104 L356 148 L394 158"/>
+          <path d="M90 62 L84 52 M330 62 L336 52"/>
+          <path d="M120 240 L150 228 L270 228 L300 240"/>
+        </g>
+        <g fill="none" stroke="#6f786a" stroke-width="1" opacity="0.3">
+          <path d="M32 96 L62 106 L62 146"/>
+          <path d="M388 96 L358 106 L358 146"/>
+        </g>
+        <!-- vent slits -->
+        <g stroke="#090b0a" stroke-width="3.5" stroke-linecap="round">
+          <path d="M36 118 L56 114 M36 127 L56 124 M36 136 L56 134"/>
+          <path d="M384 118 L364 114 M384 127 L364 124 M384 136 L364 134"/>
+        </g>
+        <g stroke="#5f6a5c" stroke-width="1" stroke-linecap="round" opacity="0.35">
+          <path d="M37 121 L56 117 M37 130 L56 127 M37 139 L56 137"/>
+          <path d="M383 121 L364 117 M383 130 L364 127 M383 139 L364 137"/>
+        </g>
+        <!-- Militia hazard stripe -->
+        <path d="M276 25 L322 25 L330 31 L282 31 Z" fill="url(#btHazard)" opacity="0.85"/>
+        <!-- amber marker lights -->
+        <circle cx="96" cy="44" r="7" fill="url(#btAmberGlow)"/>
+        <circle cx="112" cy="44" r="7" fill="url(#btAmberGlow)"/>
+        <circle cx="96" cy="44" r="2.4" fill="#ffb347"/>
+        <circle cx="112" cy="44" r="2.4" fill="#ff8a1f"/>
+        <!-- bolts -->
+        <g>
+          <circle cx="46" cy="70" r="4.5" fill="url(#btBolt)" stroke="#0b0d0c" stroke-width="1"/>
+          <circle cx="374" cy="70" r="4.5" fill="url(#btBolt)" stroke="#0b0d0c" stroke-width="1"/>
+          <circle cx="46" cy="172" r="4.5" fill="url(#btBolt)" stroke="#0b0d0c" stroke-width="1"/>
+          <circle cx="374" cy="172" r="4.5" fill="url(#btBolt)" stroke="#0b0d0c" stroke-width="1"/>
+          <circle cx="132" cy="234" r="3.5" fill="url(#btBolt)" stroke="#0b0d0c" stroke-width="1"/>
+          <circle cx="288" cy="234" r="3.5" fill="url(#btBolt)" stroke="#0b0d0c" stroke-width="1"/>
+        </g>
 
-        <circle cx="48" cy="52" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="372" cy="52" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="48" cy="204" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="372" cy="204" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="210" cy="20" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="210" cy="236" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <g><line x1="40" y1="108" x2="44" y2="105" stroke="#3a4552" stroke-width="3" stroke-linecap="round"/>
-            <line x1="40" y1="120" x2="44" y2="119" stroke="#3a4552" stroke-width="3" stroke-linecap="round"/>
-            <line x1="380" y1="108" x2="376" y2="105" stroke="#3a4552" stroke-width="3" stroke-linecap="round"/>
-            <line x1="380" y1="120" x2="376" y2="119" stroke="#3a4552" stroke-width="3" stroke-linecap="round"/></g>
+        <!-- blue light spill onto the armor -->
+        <circle class="bloom" cx="210" cy="128" r="178" fill="url(#btSpill)"/>
 
-        <circle cx="210" cy="128" r="112" fill="#06080c" stroke="#0a0e14" stroke-width="6"/>
-        <circle cx="210" cy="128" r="104" fill="url(#irisGrad)" stroke="#1b2a38" stroke-width="2"/>
-
+        <!-- recessed socket -->
+        <circle cx="210" cy="128" r="108" fill="#050606" stroke="url(#btRecess)" stroke-width="5"/>
+        <!-- thick bezel ring (rotates very slowly) -->
+        <circle cx="210" cy="128" r="101" fill="url(#btBezel)"/>
         <g class="shutters">
-          <circle cx="210" cy="128" r="96" fill="none" stroke="#1e3344" stroke-width="14"
-                  stroke-dasharray="6 22" stroke-linecap="round"/>
-          <circle cx="210" cy="128" r="78" fill="none" stroke="#16222e" stroke-width="6"
-                  stroke-dasharray="2 14" stroke-linecap="round"/>
+          <circle cx="210" cy="128" r="98" fill="none" stroke="#0a0c0c" stroke-width="5"
+                  stroke-dasharray="10 15.65" opacity="0.9"/>
+          <circle cx="210" cy="128" r="93" fill="none" stroke="#2f3633" stroke-width="1" opacity="0.8"/>
         </g>
+        <circle cx="210" cy="128" r="89" fill="#020405" stroke="#000" stroke-width="2"/>
+
+        <!-- luminous outer light ring -->
+        <circle class="glow" cx="210" cy="128" r="84" fill="none" stroke="url(#btRing)" stroke-width="8"
+                filter="url(#btGlow)"/>
+        <circle class="glow" cx="210" cy="128" r="80.5" fill="none" stroke="#e6faff" stroke-width="1.2" opacity="0.7"/>
+
+        <!-- glass lens -->
+        <circle cx="210" cy="128" r="79" fill="url(#btGlass)"/>
 
         <g class="pupil">
-          <circle cx="210" cy="128" r="62" fill="#08141c" stroke="#2a3f52" stroke-width="2"/>
-          <circle cx="210" cy="128" r="40" fill="url(#glowGrad)"/>
-          <circle cx="210" cy="128" r="26" fill="#0b1c26" stroke="#123040" stroke-width="3"/>
-          <circle cx="210" cy="128" r="12" class="glow" fill="#9bdcff" opacity="0.95"/>
-          <circle cx="204" cy="122" r="4" class="glow" fill="#ffffff" opacity="0.9"/>
+          <circle class="glow" cx="210" cy="128" r="62" fill="url(#btHalo)" opacity="0.8"/>
+          <circle cx="210" cy="128" r="45" fill="url(#btInner)" stroke="#2f9ee6" stroke-width="1.5" opacity="0.95"/>
+          <circle cx="210" cy="128" r="37" fill="none" stroke="#1d6aa3" stroke-width="7"
+                  stroke-dasharray="3.2 6.49"/>
+          <circle cx="210" cy="128" r="28" fill="none" stroke="#58c8ff" stroke-width="1.2" opacity="0.6"/>
+          <circle cx="210" cy="128" r="22" fill="#041422"/>
+          <circle class="glow" cx="210" cy="128" r="20" fill="url(#btCoreGlow)"/>
+          <circle class="glow" cx="210" cy="128" r="7.5" fill="#f2fcff"/>
         </g>
 
-        <circle cx="210" cy="128" r="112" fill="none" stroke="#000" stroke-width="2" opacity="0.5"/>
+        <!-- glass specular highlights (static: they belong to the glass, not the lens) -->
+        <path d="M141 99 A74 74 0 0 1 229 56 Q178 62 141 99 Z" fill="url(#btSpec)" opacity="0.55"/>
+        <ellipse cx="166" cy="84" rx="7" ry="3.2" transform="rotate(-38 166 84)" fill="#ffffff" opacity="0.5"/>
+        <path d="M262 186 A72 72 0 0 0 282 150" fill="none" stroke="#bfe9ff" stroke-width="2" stroke-linecap="round" opacity="0.18"/>
+        <circle cx="210" cy="128" r="79" fill="none" stroke="#000" stroke-width="1.5" opacity="0.6"/>
       </g>
 
-      <!-- ===== DESIGN: scorch (heavy boxy furnace visor, amber) ===== -->
-      <g class="design" data-el="scorch">
-        <!-- squat boxy housing -->
-        <path d="M54 50 L366 50 L404 128 L366 206 L54 206 L16 128 Z"
-              fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="5"/>
-        <path d="M60 58 L360 58 L394 128 L360 198 L60 198 L26 128 Z"
-              fill="none" stroke="#0a0e14" stroke-width="7" opacity="0.55"/>
-
-        <!-- heavy armor plates -->
-        <path d="M90 50 L120 50 L120 90 Z" fill="#171d26"/>
-        <path d="M330 50 L300 50 L300 90 Z" fill="#171d26"/>
-        <path d="M90 206 L120 206 L120 166 Z" fill="#171d26"/>
-        <path d="M330 206 L300 206 L300 166 Z" fill="#171d26"/>
-        <circle cx="210" cy="40" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="210" cy="216" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-
-        <!-- furnace grille visor -->
-        <rect x="78" y="106" width="264" height="44" rx="12" fill="#080400" stroke="#0a0e14" stroke-width="6"/>
-        <g class="pupil">
-          <rect x="90" y="110" width="240" height="36" rx="10" fill="url(#scorchVisor)"/>
-          <rect x="100" y="114" width="220" height="28" rx="8" fill="#1a1204"/>
-          <g stroke="#0a0500" stroke-width="4">
-            <line x1="140" y1="114" x2="140" y2="142"/>
-            <line x1="180" y1="114" x2="180" y2="142"/>
-            <line x1="240" y1="114" x2="240" y2="142"/>
-            <line x1="280" y1="114" x2="280" y2="142"/>
-          </g>
-          <line x1="96" y1="128" x2="324" y2="128" class="scan" stroke="#ffd08a" stroke-width="4" stroke-linecap="round"/>
-          <circle cx="210" cy="128" r="12" class="glow" fill="#fff0d0"/>
-        </g>
-      </g>
-
-      <!-- ===== DESIGN: cyclops (submarine bow, round viewport, sonar sweep, amber) ===== -->
+      <!-- ===== DESIGN: cyclops (amber single-lens sentinel camera) ===== -->
       <g class="design" data-el="cyclops">
-        <!-- nav / beacon mast -->
-        <path d="M199 32 L221 32 L217 22 L203 22 Z" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="210" cy="20" r="5" class="glow" fill="#7fdcff"/>
-
-        <!-- main pressure hull (yellow) -->
-        <path d="M84 40 Q84 32 120 32 L300 32 Q336 32 336 40 L336 216 Q336 224 300 224 L120 224 Q84 224 84 216 Z"
-              fill="url(#cyclopsHull)" stroke="#4a3a08" stroke-width="4"/>
-
-        <!-- hull plate seams -->
-        <path d="M118 40 L118 216 M302 40 L302 216" stroke="#5a4a10" stroke-width="2" opacity="0.4"/>
-        <path d="M88 128 L128 128 M292 128 L332 128" stroke="#5a4a10" stroke-width="2" opacity="0.5"/>
-
-        <!-- lower gray keel -->
-        <path d="M146 224 L274 224 L258 240 L162 240 Z" fill="#3a4250" stroke="#232a36" stroke-width="2"/>
-
-        <!-- dive planes -->
-        <path d="M84 176 L60 186 L84 198 Z" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <path d="M336 176 L360 186 L336 198 Z" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-
-        <!-- floodlight pods -->
-        <g class="pod">
-          <path d="M84 84 L86 84 L86 120 L84 120 Z" fill="#232a36"/>
-          <rect x="86" y="82" width="30" height="42" rx="15" fill="url(#cyclopsHull)" stroke="#4a3a08" stroke-width="3"/>
-          <line x1="87" y1="93" x2="115" y2="93" stroke="#5a4a10" stroke-width="1.5" opacity="0.6"/>
-          <line x1="87" y1="113" x2="115" y2="113" stroke="#5a4a10" stroke-width="1.5" opacity="0.6"/>
-          <circle cx="101" cy="103" r="12" fill="#0e131b" stroke="#3a4552" stroke-width="3"/>
-          <circle cx="101" cy="103" r="8" class="glow" fill="#ffe9b8" opacity="0.95"/>
-          <circle cx="98" cy="100" r="2.5" fill="#ffffff" opacity="0.9"/>
+        <!-- side mounting yokes -->
+        <g stroke="#0a0a09" stroke-width="3" stroke-linejoin="round">
+          <path d="M40 92 L100 82 L100 174 L40 164 Q30 128 40 92 Z" fill="url(#cyBarrel)"/>
+          <path d="M380 92 L320 82 L320 174 L380 164 Q390 128 380 92 Z" fill="url(#cyBarrel)"/>
         </g>
-        <g class="pod">
-          <path d="M336 84 L334 84 L334 120 L336 120 Z" fill="#232a36"/>
-          <rect x="304" y="82" width="30" height="42" rx="15" fill="url(#cyclopsHull)" stroke="#4a3a08" stroke-width="3"/>
-          <line x1="305" y1="93" x2="333" y2="93" stroke="#5a4a10" stroke-width="1.5" opacity="0.6"/>
-          <line x1="305" y1="113" x2="333" y2="113" stroke="#5a4a10" stroke-width="1.5" opacity="0.6"/>
-          <circle cx="319" cy="103" r="12" fill="#0e131b" stroke="#3a4552" stroke-width="3"/>
-          <circle cx="319" cy="103" r="8" class="glow" fill="#ffe9b8" opacity="0.95"/>
-          <circle cx="322" cy="100" r="2.5" fill="#ffffff" opacity="0.9"/>
+        <rect x="46" y="118" width="34" height="20" rx="2" fill="url(#btHazard)" opacity="0.8"/>
+        <rect x="340" y="118" width="34" height="20" rx="2" fill="url(#btHazard)" opacity="0.8"/>
+        <g fill="url(#btBolt)" stroke="#0b0d0c" stroke-width="1">
+          <circle cx="60" cy="102" r="4"/><circle cx="60" cy="154" r="4"/>
+          <circle cx="360" cy="102" r="4"/><circle cx="360" cy="154" r="4"/>
         </g>
 
-        <!-- round viewport frame -->
-        <circle cx="210" cy="128" r="82" fill="#0e131b" stroke="#4a3a08" stroke-width="7"/>
-        <circle cx="210" cy="128" r="76" fill="url(#irisGrad)" stroke="#1b2a38" stroke-width="2"/>
+        <circle class="bloom" cx="210" cy="128" r="172" fill="url(#cySpill)"/>
 
-        <!-- viewport bolts -->
-        <circle cx="160" cy="78" r="4" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="260" cy="78" r="4" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="160" cy="178" r="4" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="260" cy="178" r="4" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
+        <!-- main housing -->
+        <circle cx="210" cy="128" r="118" fill="url(#cyHousing)" stroke="url(#cyEdge)" stroke-width="3"/>
+        <circle cx="210" cy="128" r="110" fill="none" stroke="#000" stroke-width="2" opacity="0.6"/>
+        <g fill="url(#btBolt)" stroke="#0b0d0c" stroke-width="1">
+          <circle cx="315.3" cy="171.6" r="3.4"/><circle cx="253.6" cy="233.3" r="3.4"/>
+          <circle cx="166.4" cy="233.3" r="3.4"/><circle cx="104.7" cy="171.6" r="3.4"/>
+          <circle cx="104.7" cy="84.4" r="3.4"/><circle cx="166.4" cy="22.7" r="3.4"/>
+          <circle cx="253.6" cy="22.7" r="3.4"/><circle cx="315.3" cy="84.4" r="3.4"/>
+        </g>
 
-        <!-- rotating sonar sweep -->
+        <!-- knurled focus ring (rotates) -->
+        <circle cx="210" cy="128" r="103" fill="url(#cyBarrel)"/>
         <g class="shutters">
-          <path d="M210 128 L210 54 A74 74 0 0 1 284 128 Z" fill="url(#cyclopsVisor)" opacity="0.3"/>
+          <circle cx="210" cy="128" r="100" fill="none" stroke="#0b0b0a" stroke-width="6" stroke-dasharray="3 3.98"/>
+          <path d="M210 26 L216 33 L204 33 Z" fill="#ffab2e" opacity="0.9"/>
         </g>
-
-        <!-- glowing sonar core -->
-        <g class="pupil">
-          <circle cx="210" cy="128" r="56" fill="#08141c" stroke="#2a3f52" stroke-width="2"/>
-          <circle cx="210" cy="128" r="40" fill="url(#cyclopsVisor)"/>
-          <circle cx="210" cy="128" r="26" fill="#120d02" stroke="#3a2e08" stroke-width="2"/>
-          <line x1="210" y1="106" x2="210" y2="150" class="scan" stroke="#ffd98a" stroke-width="2"/>
-          <line x1="184" y1="128" x2="236" y2="128" class="scan" stroke="#ffd98a" stroke-width="2"/>
-          <circle cx="210" cy="128" r="10" class="glow" fill="#fff0c8"/>
-          <circle cx="204" cy="122" r="3.5" fill="#ffffff" opacity="0.9"/>
+        <circle cx="210" cy="128" r="95" fill="#0b0a09" stroke="#55524a" stroke-width="1"/>
+        <!-- engraved range scale (counter-rotates) -->
+        <g class="counter">
+          <circle cx="210" cy="128" r="90" fill="none" stroke="#8c877a" stroke-width="3" stroke-dasharray="1 8.42" opacity="0.55"/>
+          <circle cx="210" cy="128" r="90" fill="none" stroke="#ffab2e" stroke-width="6" stroke-dasharray="1.6 139.77" opacity="0.85"/>
         </g>
+        <circle cx="210" cy="128" r="85" fill="#030201" stroke="#000" stroke-width="2"/>
 
-        <circle cx="210" cy="128" r="88" fill="none" stroke="#000" stroke-width="2" opacity="0.5"/>
-      </g>
+        <!-- amber light ring -->
+        <circle class="glow" cx="210" cy="128" r="81" fill="none" stroke="url(#cyRing)" stroke-width="6" filter="url(#btGlow)"/>
+        <circle class="glow" cx="210" cy="128" r="78" fill="none" stroke="#fff1cf" stroke-width="1" opacity="0.6"/>
 
-      <!-- ===== DESIGN: iris (rotating mechanical aperture blades, violet) ===== -->
-      <g class="design" data-el="iris">
-        <!-- circular armor ring -->
-        <circle cx="210" cy="128" r="122" fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="4"/>
-        <circle cx="210" cy="128" r="112" fill="#06090d" stroke="#0a0e14" stroke-width="6"/>
-        <circle cx="210" cy="128" r="104" fill="#0b1522" stroke="#1b2a38" stroke-width="2"/>
-
-        <!-- rotating eight-blade mechanical iris -->
-        <g class="shutters">
-          <g transform="translate(210 128)">
-            <g fill="#131d2c" stroke="#0a0e14" stroke-width="2">
-              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z"/>
-              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(45)"/>
-              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(90)"/>
-              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(135)"/>
-              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(180)"/>
-              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(225)"/>
-              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(270)"/>
-              <path d="M-30 -78 L30 -78 L8 -14 L-8 -14 Z" transform="rotate(315)"/>
-            </g>
+        <!-- glass + moving lens element -->
+        <circle cx="210" cy="128" r="76" fill="url(#cyGlass)"/>
+        <g clip-path="url(#cyLensClip)">
+          <g class="pupil">
+            <circle class="glow" cx="210" cy="128" r="62" fill="url(#cyHalo)" opacity="0.85"/>
+            <circle cx="210" cy="128" r="47" fill="none" stroke="#7a3f05" stroke-width="1.5" opacity="0.9"/>
+            <path d="M210 94 L210 81 M239.4 111 L250.7 104.5 M239.4 145 L250.7 151.5 M210 162 L210 175 M180.6 145 L169.3 151.5 M180.6 111 L169.3 104.5"
+                  stroke="#3a1e04" stroke-width="2"/>
+            <polygon points="210,94 239.4,111 239.4,145 210,162 180.6,145 180.6,111" fill="#0a0602" stroke="#ff9d1f" stroke-width="1.2" opacity="0.95"/>
+            <circle class="glow" cx="210" cy="128" r="25" fill="url(#cyCore)"/>
+            <circle class="glow" cx="210" cy="128" r="7" fill="#fff8e6"/>
           </g>
-          <circle cx="210" cy="128" r="28" fill="#070b12" stroke="#0a0e14" stroke-width="4"/>
+          <!-- targeting scan line -->
+          <g class="scan" opacity="0.55">
+            <rect x="134" y="120" width="152" height="16" fill="#ffb347" opacity="0.12"/>
+            <rect x="134" y="127.2" width="152" height="1.6" fill="#ffd27a"/>
+          </g>
         </g>
+        <path d="M210 55 L210 65 M210 191 L210 201 M137 128 L147 128 M273 128 L283 128" stroke="#ffb347" stroke-width="1.5" opacity="0.45"/>
 
-        <g class="pupil">
-          <circle cx="210" cy="128" r="42" fill="#0c1020" stroke="#1b2a38" stroke-width="2"/>
-          <circle cx="210" cy="128" r="32" fill="url(#irisVisor)"/>
-          <circle cx="210" cy="128" r="20" fill="#0a0a14"/>
-          <circle cx="210" cy="128" r="10" class="glow" fill="#ecd9ff"/>
-        </g>
-
-        <circle cx="210" cy="128" r="122" fill="none" stroke="#000" stroke-width="2" opacity="0.5"/>
+        <!-- glass reflections -->
+        <path d="M146 96 A70 70 0 0 1 226 60 Q178 66 146 96 Z" fill="url(#btSpec)" opacity="0.45"/>
+        <ellipse cx="170" cy="84" rx="6" ry="2.8" transform="rotate(-38 170 84)" fill="#ffffff" opacity="0.45"/>
+        <circle cx="252" cy="170" r="6" fill="#7affd0" opacity="0.07"/>
+        <circle cx="263" cy="182" r="3" fill="#ff6ad5" opacity="0.09"/>
+        <circle cx="210" cy="128" r="76" fill="none" stroke="#000" stroke-width="1.5" opacity="0.6"/>
       </g>
 
-      <!-- ===== DESIGN: radar (directional dish, rotating scan sweep, cyan) ===== -->
-      <g class="design" data-el="radar">
-        <!-- diamond housing -->
-        <path d="M210 18 L374 92 L374 164 L210 238 L46 164 L46 92 Z"
-              fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="4"/>
-        <path d="M210 34 L360 98 L360 158 L210 222 L60 158 L60 98 Z"
-              fill="none" stroke="#0a0e14" stroke-width="6" opacity="0.55"/>
-        <path d="M98 60 L128 84 M322 60 L292 84 M98 196 L128 172 M322 196 L292 172"
-              stroke="#232a33" stroke-width="3"/>
+      <!-- ===== DESIGN: iris (violet mechanical aperture) ===== -->
+      <g class="design" data-el="iris">
+        <circle class="bloom" cx="210" cy="128" r="172" fill="url(#irSpill)"/>
+        <!-- side fins -->
+        <g fill="url(#metal)" stroke="#0a0e14" stroke-width="3" stroke-linejoin="round">
+          <path d="M96 98 L52 108 L52 148 L96 158 Z"/>
+          <path d="M324 98 L368 108 L368 148 L324 158 Z"/>
+        </g>
+        <g stroke="#06080c" stroke-width="3" stroke-linecap="round">
+          <path d="M62 118 L84 116 M62 128 L84 128 M62 138 L84 140"/>
+          <path d="M358 118 L336 116 M358 128 L336 128 M358 138 L336 140"/>
+        </g>
+        <circle cx="58" cy="128" r="2.4" class="glow" fill="#c9a6ff"/>
+        <circle cx="362" cy="128" r="2.4" class="glow" fill="#c9a6ff"/>
 
-        <!-- rotating radar sweep -->
-        <circle cx="210" cy="128" r="82" fill="#06090d" stroke="#0a0e14" stroke-width="6"/>
+        <!-- octagonal armored housing -->
+        <path d="M326.4 176.2 L258.2 244.4 L161.8 244.4 L93.6 176.2 L93.6 79.8 L161.8 11.6 L258.2 11.6 L326.4 79.8 Z"
+              fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M317.2 172.4 L254.4 235.2 L165.6 235.2 L102.8 172.4 L102.8 83.6 L165.6 20.8 L254.4 20.8 L317.2 83.6 Z"
+              fill="none" stroke="#0a0e14" stroke-width="4" opacity="0.6" stroke-linejoin="round"/>
+        <g fill="url(#btBolt)" stroke="#0b0d0c" stroke-width="1">
+          <circle cx="313.5" cy="170.9" r="3.4"/><circle cx="252.9" cy="231.5" r="3.4"/>
+          <circle cx="167.1" cy="231.5" r="3.4"/><circle cx="106.5" cy="170.9" r="3.4"/>
+          <circle cx="106.5" cy="85.1" r="3.4"/><circle cx="167.1" cy="24.5" r="3.4"/>
+          <circle cx="252.9" cy="24.5" r="3.4"/><circle cx="313.5" cy="85.1" r="3.4"/>
+        </g>
+        <circle cx="210" cy="128" r="107" fill="#06080c" stroke="#000" stroke-width="3"/>
+        <!-- engraved bezel (counter-rotates) -->
+        <g class="counter">
+          <circle cx="210" cy="128" r="103.5" fill="none" stroke="#4b4f63" stroke-width="4" stroke-dasharray="1.6 4.9" opacity="0.75"/>
+          <circle cx="210" cy="128" r="103.5" fill="none" stroke="#b07cff" stroke-width="6" stroke-dasharray="3 105.4" opacity="0.85"/>
+        </g>
+        <circle class="glow" cx="210" cy="128" r="100" fill="none" stroke="url(#irRing)" stroke-width="4" filter="url(#btGlow)"/>
+
+        <!-- light behind the aperture -->
+        <circle cx="210" cy="128" r="98" fill="url(#irBack)"/>
+        <g class="pupil">
+          <circle class="glow" cx="210" cy="128" r="42" fill="url(#irCore)"/>
+          <circle cx="210" cy="128" r="30" fill="none" stroke="#f3e6ff" stroke-width="1" opacity="0.5"/>
+          <circle cx="210" cy="128" r="16" fill="#1a0838" stroke="#e2ccff" stroke-width="1.2"/>
+          <circle class="glow" cx="210" cy="128" r="8" fill="#fbf5ff"/>
+        </g>
+
+        <!-- nine aperture blades (rotate) -->
         <g class="shutters">
-          <path d="M210 128 L158 76 A74 74 0 0 0 262 76 Z" fill="url(#radarVisor)" opacity="0.55"/>
+          <g fill="url(#irBlade)" stroke="#05060a" stroke-width="2" stroke-linejoin="round">
+            <path d="M210 84 L138.6 58 A100 100 0 0 1 200.3 28.5 L238.3 94.3 Z"/>
+            <path d="M238.3 94.3 L200.3 28.5 A100 100 0 0 1 266.5 45.5 L253.3 120.4 Z"/>
+            <path d="M253.3 120.4 L266.5 45.5 A100 100 0 0 1 306.3 101.1 L248.1 150 Z"/>
+            <path d="M248.1 150 L306.3 101.1 A100 100 0 0 1 301.1 169.3 L225 169.3 Z"/>
+            <path d="M225 169.3 L301.1 169.3 A100 100 0 0 1 253.2 218.2 L195 169.3 Z"/>
+            <path d="M195 169.3 L253.2 218.2 A100 100 0 0 1 185.1 224.8 L171.9 150 Z"/>
+            <path d="M171.9 150 L185.1 224.8 A100 100 0 0 1 128.7 186.2 L166.7 120.4 Z"/>
+            <path d="M166.7 120.4 L128.7 186.2 A100 100 0 0 1 110.3 120.3 L181.7 94.3 Z"/>
+            <path d="M181.7 94.3 L110.3 120.3 A100 100 0 0 1 138.6 58 L210 84 Z"/>
+          </g>
+          <path d="M210 84 L138.6 58 M238.3 94.3 L200.3 28.5 M253.3 120.4 L266.5 45.5 M248.1 150 L306.3 101.1 M225 169.3 L301.1 169.3 M195 169.3 L253.2 218.2 M171.9 150 L185.1 224.8 M166.7 120.4 L128.7 186.2 M181.7 94.3 L110.3 120.3"
+                fill="none" stroke="#9c86c9" stroke-width="1" opacity="0.28" transform="translate(0.8 0.8)"/>
+          <polygon class="glow" points="210,84 238.3,94.3 253.3,120.4 248.1,150 225,169.3 195,169.3 171.9,150 166.7,120.4 181.7,94.3"
+                   fill="none" stroke="#e0c8ff" stroke-width="1.6" opacity="0.7"/>
         </g>
+        <circle cx="210" cy="128" r="100" fill="none" stroke="#0a0b10" stroke-width="5"/>
 
-        <!-- scope with range rings + crosshair -->
-        <g class="pupil">
-          <circle cx="210" cy="128" r="74" fill="#081018" stroke="#1b2a38" stroke-width="2"/>
-          <circle cx="210" cy="128" r="54" fill="none" stroke="#16405a" stroke-width="2"/>
-          <circle cx="210" cy="128" r="34" fill="none" stroke="#16405a" stroke-width="2"/>
-          <line x1="210" y1="54" x2="210" y2="202" stroke="#16405a" stroke-width="2"/>
-          <line x1="136" y1="128" x2="284" y2="128" stroke="#16405a" stroke-width="2"/>
-          <circle cx="210" cy="128" r="9" class="glow" fill="#e0f9ff"/>
-        </g>
+        <path d="M140 92 A82 82 0 0 1 236 50 Q182 58 140 92 Z" fill="url(#btSpec)" opacity="0.28"/>
+        <circle cx="210" cy="128" r="107" fill="none" stroke="#000" stroke-width="2" opacity="0.6"/>
       </g>
 
-      <!-- ===== DESIGN: mantis (tri-lens tracking array, crimson) ===== -->
-      <g class="design" data-el="mantis">
-        <!-- angular armor housing -->
-        <path d="M80 30 L340 30 L404 104 L404 152 L340 230 L80 230 L16 152 L16 104 Z"
-              fill="url(#metal)" stroke="url(#metalEdge)" stroke-width="4"/>
-        <path d="M86 40 L334 40 L392 108 L392 148 L334 220 L86 220 L28 148 L28 108 Z"
-              fill="none" stroke="#0a0e14" stroke-width="6" opacity="0.55"/>
+      <!-- ===== DESIGN: cortana (holographic AI construct, blue-violet) ===== -->
+      <g class="design" data-el="cortana">
+        <circle class="bloom" cx="210" cy="128" r="190" fill="url(#coField)"/>
+        <rect x="40" y="0" width="340" height="260" fill="url(#coHex)" mask="url(#coFade)" opacity="0.45"/>
 
-        <!-- top sight diodes + anchor bolts -->
-        <circle cx="120" cy="50" r="5" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="300" cy="50" r="5" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="62" cy="98" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="358" cy="98" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="62" cy="158" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-        <circle cx="358" cy="158" r="6" fill="#0e131b" stroke="#3a4552" stroke-width="2"/>
-
-        <!-- optic rail mounting three lenses -->
-        <rect x="86" y="112" width="248" height="32" rx="10" fill="#06090d" stroke="#0a0e14" stroke-width="6"/>
-        <g class="pupil">
-          <circle cx="128" cy="128" r="40" fill="#0c1020" stroke="#1b2a38" stroke-width="2"/>
-          <circle cx="128" cy="128" r="30" fill="url(#mantisVisor)" opacity="0.9"/>
-          <circle cx="128" cy="128" r="13" class="glow" fill="#ffc2b3"/>
-          <circle cx="210" cy="128" r="52" fill="#0c1020" stroke="#1b2a38" stroke-width="2"/>
-          <circle cx="210" cy="128" r="40" fill="url(#mantisVisor)" opacity="0.9"/>
-          <circle cx="210" cy="128" r="18" class="glow" fill="#ffd9cc"/>
-          <circle cx="292" cy="128" r="40" fill="#0c1020" stroke="#1b2a38" stroke-width="2"/>
-          <circle cx="292" cy="128" r="30" fill="url(#mantisVisor)" opacity="0.9"/>
-          <circle cx="292" cy="128" r="13" class="glow" fill="#ffc2b3"/>
+        <!-- data rings -->
+        <g class="shutters">
+          <circle cx="210" cy="128" r="116" fill="none" stroke="#6fd8ff" stroke-width="1.5" stroke-dasharray="2 5 14 5 1 7 30 6 3 9" opacity="0.55"/>
+          <circle cx="210" cy="128" r="121" fill="none" stroke="#bfe9ff" stroke-width="3" stroke-linecap="round" stroke-dasharray="0.1 47.4" opacity="0.8"/>
+          <path d="M210 5 L216 13 L204 13 Z M210 251 L204 243 L216 243 Z" fill="#9fe6ff" opacity="0.75"/>
         </g>
+        <g class="counter">
+          <circle cx="210" cy="128" r="108" fill="none" stroke="#a983ff" stroke-width="1" stroke-dasharray="60 10 6 10" opacity="0.55"/>
+          <circle cx="210" cy="128" r="104" fill="none" stroke="#a983ff" stroke-width="4" stroke-dasharray="1 15.33" opacity="0.35"/>
+        </g>
+
+        <!-- circuit traces -->
+        <g fill="none" stroke="#7fdcff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+          <path d="M168 76 L156 52 L128 52"/>
+          <path d="M210 66 L210 36"/>
+          <path d="M252 76 L264 56 L296 56"/>
+          <path d="M172 182 L160 206 L134 206"/>
+          <path d="M248 182 L258 200 L290 200"/>
+          <path d="M86 128 L64 128 L52 116"/>
+          <path d="M334 128 L356 128 L368 140"/>
+        </g>
+        <g class="glow" fill="#c9eeff" opacity="0.85">
+          <circle cx="128" cy="52" r="2.4"/><circle cx="210" cy="36" r="2.4"/><circle cx="296" cy="56" r="2.4"/>
+          <circle cx="134" cy="206" r="2.4"/><circle cx="290" cy="200" r="2.4"/>
+          <circle cx="52" cy="116" r="2.4"/><circle cx="368" cy="140" r="2.4"/>
+        </g>
+
+        <!-- almond eye -->
+        <path d="M92 128 C140 54 280 54 328 128 C280 202 140 202 92 128 Z" fill="#040a1c" fill-opacity="0.88"/>
+        <g clip-path="url(#coEyeClip)">
+          <g class="pupil">
+            <circle class="glow" cx="210" cy="128" r="60" fill="url(#coHalo)"/>
+            <circle cx="210" cy="128" r="46" fill="url(#coIris)"/>
+            <path d="M232 128 L254.9 131.6 M231.3 133.7 L247.7 141.4 M229.1 139 L247 153.5 M225.6 143.6 L235.9 158.5 M221 147.1 L229.3 168.6 M215.7 149.3 L217.2 167.3 M210 150 L206.4 172.9 M204.3 149.3 L196.6 165.7 M199 147.1 L184.5 165 M194.4 143.6 L179.5 153.9 M190.9 139 L169.4 147.3 M188.7 133.7 L170.7 135.2 M188 128 L165.1 124.4 M188.7 122.3 L172.3 114.6 M190.9 117 L173 102.5 M194.4 112.4 L184.1 97.5 M199 108.9 L190.7 87.4 M204.3 106.7 L202.8 88.7 M210 106 L213.6 83.1 M215.7 106.7 L223.4 90.3 M221 108.9 L235.5 91 M225.6 112.4 L240.5 102.1 M229.1 117 L250.6 108.7 M231.3 122.3 L249.3 120.8"
+                  stroke="#9feaff" stroke-width="1" stroke-linecap="round" opacity="0.45"/>
+            <circle cx="210" cy="128" r="39" fill="none" stroke="#c7b3ff" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>
+            <circle cx="210" cy="128" r="46" fill="none" stroke="#e4d4ff" stroke-width="1.2" opacity="0.75"/>
+            <circle cx="210" cy="128" r="21" fill="#020717" stroke="#7fdcff" stroke-width="1"/>
+            <circle class="glow" cx="210" cy="128" r="17" fill="url(#coCore)"/>
+            <circle class="glow" cx="210" cy="128" r="5" fill="#ffffff"/>
+          </g>
+          <!-- hologram scan + scanlines -->
+          <g class="scan" opacity="0.5">
+            <rect x="90" y="118" width="240" height="18" fill="#6fd8ff" opacity="0.12"/>
+            <rect x="90" y="126.3" width="240" height="1.4" fill="#bfefff"/>
+          </g>
+          <rect x="90" y="54" width="240" height="148" fill="url(#coScan)" opacity="0.16"/>
+        </g>
+        <path class="glow" d="M92 128 C140 54 280 54 328 128 C280 202 140 202 92 128 Z" fill="none" stroke="url(#coLine)" stroke-width="2.5" filter="url(#btGlow)"/>
+        <!-- liner sweep + lower lash line -->
+        <path class="glow" d="M84 122 C134 40 290 38 340 110 L364 94" fill="none" stroke="url(#coLine)" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+        <path d="M112 150 C162 196 262 198 314 146" fill="none" stroke="#8aa8ff" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
+        <ellipse cx="190" cy="106" rx="6" ry="2.6" transform="rotate(-20 190 106)" fill="#ffffff" opacity="0.5"/>
       </g>
 
     </g>
   </svg>
-  <div class="eyebanner" id="eyeBanner">AWAITING CALL</div>
+  <button type="button" class="eyemode-exit" id="eyeModeExit" title="Leave eye mode (Esc)" aria-label="Leave eye mode" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
+  <div class="eyehud">
+    <div class="eyebanner-row">
+      <svg class="armed-ring" id="armedRing" viewBox="0 0 20 20" aria-hidden="true"><circle class="armed-track" cx="10" cy="10" r="8"/><circle class="armed-fill" cx="10" cy="10" r="8"/></svg>
+      <div class="eyebanner" id="eyeBanner" role="status" aria-live="polite">READY</div>
+    </div>
+    <div class="caption" id="caption" aria-hidden="true"></div>
+    <div class="transcript" id="transcript" aria-live="polite"><span class="transcript-who">HEARD</span><span class="transcript-text" id="transcriptText"></span></div>
+  </div>
 </section>
 
 <div class="chatbar" id="chatBar" title="Drag to resize the eye / chat split">
   <span class="grip" aria-hidden="true"></span>
-  <button id="chatToggle" title="Show / hide chat">▴ Show chat</button>
+  <button type="button" id="chatToggle" aria-controls="chat" aria-expanded="false">
+    <span class="chev" aria-hidden="true"></span><span class="chat-toggle-label">Show chat</span>
+  </button>
   <span class="grip" aria-hidden="true"></span>
 </div>
 
-<main id="chat">
-  <div id="messages"></div>
+<main id="chat" aria-label="Conversation">
+  <div id="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+  <div class="empty-state" id="emptyState">
+    <div class="empty-title">Standing by.</div>
+    <div class="empty-sub">Say <kbd>Hermes</kbd>, hold <kbd>Space</kbd> to talk, or type below.</div>
+  </div>
+  <button type="button" class="jump-btn" id="jumpBtn" tabindex="-1" aria-hidden="true">↓ New messages</button>
 </main>
 
 <footer class="inputbar">
-  <button id="micBtn" title="Toggle microphone / wake word" class="mic-btn" aria-label="Toggle microphone">
-    <svg class="mic-icon" viewBox="0 0 210 130" aria-hidden="true">
-      <path class="mic-shell" d="M35 15 L175 15 L199 65 L175 115 L35 115 L11 65 Z" fill="#2a3440" stroke="#4d5a68" stroke-width="4"/>
-      <circle class="mic-core" cx="105" cy="65" r="42" fill="#06080c" stroke="#0a0e14" stroke-width="4"/>
-      <circle class="mic-glow" cx="105" cy="65" r="20" fill="#9bdcff"/>
-      <circle cx="101" cy="61" r="7" fill="#ffffff" opacity="0.9"/>
-    </svg>
-  </button>
-  <input id="msgInput" type="text" placeholder='Say "Hermes" to talk, or type here...' autocomplete="off">
-  <button id="newChatBtn" title="Start a new chat">✚ New</button>
-  <button id="sendBtn">Send</button>
+  <div class="suggestions" id="suggestions" aria-label="Suggestions"></div>
+  <form class="composer" id="composer" autocomplete="off">
+    <button type="button" id="micBtn" class="mic-btn" title="Microphone (M) — always-on wake word" aria-label="Microphone" aria-pressed="false">
+      <svg class="mic-icon" viewBox="0 0 210 130" aria-hidden="true">
+        <path class="mic-shell" d="M35 15 L175 15 L199 65 L175 115 L35 115 L11 65 Z" fill="#2a3440" stroke="#4d5a68" stroke-width="4"/>
+        <circle class="mic-core" cx="105" cy="65" r="42" fill="#06080c" stroke="#0a0e14" stroke-width="4"/>
+        <circle class="mic-glow" cx="105" cy="65" r="20" fill="#9bdcff"/>
+        <circle cx="101" cy="61" r="7" fill="#ffffff" opacity="0.9"/>
+      </svg>
+    </button>
+    <label for="msgInput" class="sr-only">Message HERMES</label>
+    <textarea id="msgInput" rows="1" maxlength="4000" placeholder='Say "Hermes", hold Space, or type…' spellcheck="true" enterkeyhint="send"></textarea>
+    <button type="button" id="newChatBtn" class="icon-btn" title="New chat (Ctrl+K)" aria-label="New chat">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button type="submit" id="sendBtn" class="send-btn" aria-label="Send message">
+      <span class="send-label">Send</span>
+      <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h14M13 6l6 6-6 6"/></svg>
+      <svg class="stop-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+    </button>
+  </form>
+  <div class="charcount" id="charCount" aria-live="polite"></div>
 </footer>
 
-<div id="settingsPanel" class="settings hidden">
+<!-- first-run onboarding -->
+<div class="onboard-backdrop" id="onboardBackdrop" hidden></div>
+<div class="onboard" id="onboarding" aria-modal="true" role="dialog" aria-labelledby="onboardTitle" hidden>
+  <div class="onboard-head">
+    <h2 id="onboardTitle">Protocol 1: Link established</h2>
+    <button type="button" class="icon-btn small" id="onboardClose" aria-label="Dismiss">✕</button>
+  </div>
+  <ul class="onboard-list">
+    <li><span class="ob-key">“Hermes”</span><span>Say his name, wait for <b>YES?</b>, then talk — or say it all in one go: “Hermes, what time is it?”</span></li>
+    <li id="obPtt"><span class="ob-key"><kbd>Space</kbd></span><span>Hold to talk directly — no wake word needed. On a phone, long-press the mic button.</span></li>
+    <li><span class="ob-key"><kbd>/</kbd></span><span>Or just type. <kbd>?</kbd> shows every shortcut.</span></li>
+  </ul>
+  <p class="onboard-note" id="onboardNote">Voice input needs Chrome or Edge and microphone access.</p>
+  <button type="button" class="primary" id="onboardOk">Understood</button>
+</div>
+
+<!-- settings -->
+<div class="backdrop" id="settingsBackdrop" hidden></div>
+<aside id="settingsPanel" class="settings" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
   <div class="settings-header">
-    <h2>Settings</h2>
-    <button id="closeSettingsBtn" title="Close">✕</button>
+    <h2 id="settingsTitle">Settings <span class="unsaved" id="unsavedBadge" hidden>unsaved</span></h2>
+    <button type="button" class="icon-btn" id="closeSettingsBtn" title="Close (Esc)" aria-label="Close settings">✕</button>
   </div>
 
-  <section>
-    <h3 class="group">AI Model</h3>
-    <label>Local Model <input id="s_localmodel" type="text" spellcheck="false"></label>
-    <label>System Prompt <textarea id="s_prompt" rows="4"></textarea></label>
-    <div class="row">
-      <label>Temperature <input id="s_temp" type="number" step="0.1" min="0" max="2"></label>
-      <label>Max Tokens <input id="s_max" type="number" step="16" min="16" max="8192"></label>
-    </div>
-  </section>
+  <div class="settings-body">
+    <section>
+      <h3 class="group">Brain</h3>
+      <label>Local model
+        <select id="s_modelselect"></select>
+      </label>
+      <label id="customModelWrap" hidden>Custom model name
+        <input id="s_localmodel" type="text" spellcheck="false" placeholder="e.g. llama3.2:latest">
+      </label>
+      <p class="hint" id="modelHint"></p>
+      <label>System prompt <textarea id="s_prompt" rows="4" placeholder="Leave empty for HERMES' default personality"></textarea></label>
+      <div class="row">
+        <label>Temperature <input id="s_temp" type="number" step="0.1" min="0" max="2" inputmode="decimal"></label>
+        <label>Max tokens <input id="s_max" type="number" step="16" min="16" max="8192" inputmode="numeric"></label>
+      </div>
+    </section>
 
-  <section>
-    <h3 class="group">Appearance</h3>
-    <label>Eye Design
-      <select id="s_eye">
-        <option value="classic">BT-7274</option>
-        <option value="scorch">Scorch</option>
-        <option value="cyclops">Cyclops</option>
-        <option value="iris">Iris</option>
-        <option value="radar">Radar</option>
-        <option value="mantis">Mantis</option>
-      </select>
-    </label>
-  </section>
-
-  <section>
-    <h3 class="group">Voice</h3>
-    <div class="row">
+    <section>
+      <h3 class="group">Voice</h3>
       <label>Engine
         <select id="s_engine">
           <option value="piper">HERMES (local Piper)</option>
           <option value="browser">Browser voice (OS)</option>
         </select>
       </label>
-    </div>
 
-    <div id="piperVoiceGroup">
-      <label>Piper Voice
-        <select id="s_pipervoice">
-          <option value="BT7274">BT-7274</option>
-          <option value="ScorchAI">Scorch AI</option>
-          <option value="PDA">Subnautica PDA</option>
-          <option value="JarvisDE">JARVIS (German)</option>
+      <div id="piperVoiceGroup">
+        <label>Piper voice
+          <select id="s_pipervoice">
+            <option value="BT7274">BT-7274</option>
+            <option value="ScorchAI">Scorch AI</option>
+            <option value="PDA">Subnautica PDA</option>
+            <option value="JarvisDE">JARVIS (German)</option>
+          </select>
+        </label>
+        <div class="range">
+          <label for="s_speed">Voice speed</label><output id="s_speed_val" for="s_speed"></output>
+          <input id="s_speed" type="range" min="0.5" max="2" step="0.05">
+        </div>
+        <label>Voice effect
+          <select id="s_fx">
+            <option value="titan">Titan — BT-style cockpit voice</option>
+            <option value="radio">Radio — comms channel</option>
+            <option value="none">None — dry</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="browserVoiceGroup">
+        <label>Browser voice <select id="s_voice"></select></label>
+        <div class="range">
+          <label for="s_pitch">Pitch</label><output id="s_pitch_val" for="s_pitch"></output>
+          <input id="s_pitch" type="range" min="0" max="2" step="0.1">
+        </div>
+        <div class="range">
+          <label for="s_rate">Rate</label><output id="s_rate_val" for="s_rate"></output>
+          <input id="s_rate" type="range" min="0.1" max="3" step="0.1">
+        </div>
+      </div>
+
+      <div class="range">
+        <label for="s_volume">Volume</label><output id="s_vol_val" for="s_volume"></output>
+        <input id="s_volume" type="range" min="0" max="1" step="0.05">
+      </div>
+
+      <label class="check"><input id="s_stream" type="checkbox"> Speak while the reply is still streaming</label>
+      <button type="button" id="testTTSBtn" class="small">▶ Test voice</button>
+    </section>
+
+    <section>
+      <h3 class="group">Behaviour</h3>
+      <label class="check"><input id="s_say" type="checkbox"> Speak replies out loud</label>
+      <label class="check"><input id="s_call" type="checkbox"> Only answer when called by name (“Hermes”)</label>
+      <label class="check"><input id="s_auto" type="checkbox"> Auto-scroll chat</label>
+    </section>
+
+    <section>
+      <h3 class="group">Appearance</h3>
+      <label>Eye design
+        <select id="s_eye">
+          <option value="classic">BT-7274</option>
+          <option value="cyclops">Cyclops</option>
+          <option value="iris">Iris</option>
+          <option value="cortana">Cortana</option>
         </select>
       </label>
+    </section>
+
+    <p class="note">Everything runs locally — Piper speaks, Ollama thinks. Changes preview live; press <b>Save</b> (or <kbd>Ctrl</kbd>+<kbd>Enter</kbd>) to keep them.</p>
+  </div>
+
+  <div class="settings-footer">
+    <button type="button" id="resetBtn" class="ghost">Reset to defaults</button>
+    <button type="button" id="saveBtn" class="primary">Save settings</button>
+  </div>
+</aside>
+
+<!-- pictures -->
+<div class="overlay" id="picturesOverlay" hidden>
+  <div class="pictures-window" role="dialog" aria-modal="true" aria-labelledby="picturesTitle">
+    <div class="pictures-head">
+      <h2 id="picturesTitle">HERMES — Pictures</h2>
+      <button type="button" class="icon-btn" id="picturesClose" title="Close (Esc)" aria-label="Close pictures">✕</button>
     </div>
-
-    <div id="browserVoiceGroup">
-      <label>Browser Voice <select id="s_voice"></select></label>
-      <div class="row">
-        <label>Pitch <input id="s_pitch" type="range" min="0" max="2" step="0.1"></label>
-        <span id="s_pitch_val" class="val"></span>
-      </div>
-      <div class="row">
-        <label>Rate <input id="s_rate" type="range" min="0.1" max="3" step="0.1"></label>
-        <span id="s_rate_val" class="val"></span>
-      </div>
-      <div class="row">
-        <label>Volume <input id="s_volume" type="range" min="0" max="1" step="0.05"></label>
-        <span id="s_vol_val" class="val"></span>
-      </div>
-    </div>
-
-    <button id="testTTSBtn" class="small">Test current voice</button>
-  </section>
-
-  <section>
-    <h3 class="group">Sound / speak replies</h3>
-    <label class="check"><input id="s_say" type="checkbox"> Speak replies out loud</label>
-    <label class="check"><input id="s_auto" type="checkbox"> Auto-scroll chat</label>
-    <label class="check"><input id="s_call" type="checkbox" checked> Answer when called by name ("Hermes")</label>
-  </section>
-
-  <button id="saveBtn" class="primary">Save settings</button>
-  <span id="saveMsg" class="savemsg"></span>
-  <p class="note">HERMES (Piper) runs fully locally — no API key needed for speech. The eye reflects HERMES' state. Toggle 🎤 to listen continuously; HERMES only responds when you say "Hermes" first. Otherwise, type your message.</p>
+    <p class="pictures-caption" id="picturesCaption"></p>
+    <div class="pictures-grid" id="picturesGrid"></div>
+  </div>
 </div>
 
-<script src="/app.js?v=18"></script>
+<dialog class="lightbox" id="lightbox" aria-label="Picture">
+  <img id="lightboxImg" alt="">
+  <div class="lightbox-bar">
+    <a id="lightboxDownload" class="small-link" download>Download</a>
+    <a id="lightboxOpen" class="small-link" target="_blank" rel="noopener">Open full size</a>
+    <button type="button" class="icon-btn small" id="lightboxClose" aria-label="Close">✕</button>
+  </div>
+</dialog>
+
+<dialog class="shortcuts" id="shortcutsDialog" aria-labelledby="shortcutsTitle">
+  <div class="dialog-head">
+    <h2 id="shortcutsTitle">Shortcuts</h2>
+    <button type="button" class="icon-btn small" id="shortcutsClose" aria-label="Close">✕</button>
+  </div>
+  <dl class="keys">
+    <dt><kbd>Space</kbd> (hold)</dt><dd>Push-to-talk — no wake word needed</dd>
+    <dt><kbd>M</kbd></dt><dd>Toggle always-on microphone</dd>
+    <dt><kbd>/</kbd></dt><dd>Focus the message box</dd>
+    <dt><kbd>Enter</kbd></dt><dd>Send · <kbd>Shift</kbd>+<kbd>Enter</kbd> new line</dd>
+    <dt><kbd>↑</kbd></dt><dd>Previous message (empty box)</dd>
+    <dt><kbd>Esc</kbd></dt><dd>Stop talking / generating, close panels</dd>
+    <dt><kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd></dt><dd>New chat</dd>
+    <dt><kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>,</kbd></dt><dd>Settings</dd>
+    <dt><kbd>E</kbd></dt><dd>Eye mode — only the eye, fullscreen (<kbd>Esc</kbd> to leave)</dd>
+    <dt><kbd>?</kbd></dt><dd>This help</dd>
+    <dt>“Hermes, stop”</dt><dd>Interrupt him by voice</dd>
+  </dl>
+</dialog>
+
+<div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<script src="/lib.js"></script>
+<script src="/eye.js"></script>
+<script src="/app.js"></script>
 </body>
 </html>
