@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -12,166 +12,32 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
+	_ "time/tzdata" // the slim Docker image may not ship a zoneinfo database
 )
 
-const (
-	mistralDefaultBase  = "https://api.mistral.ai"
-	mistralDefaultModel = "mistral-medium-latest"
-)
-
+// External data sources. Variables so tests can point them at fakes.
 var (
-	imageAgentMu sync.Mutex
-	imageAgentID string
+	openMeteoForecastURL = "https://api.open-meteo.com/v1/forecast"
+	openMeteoGeocodeURL  = "https://geocoding-api.open-meteo.com/v1/search"
+	newsFeedURL          = "https://news.google.com/rss"
 )
 
-func mistralKey() string  { return os.Getenv("MISTRAL_API_KEY") }
-func mistralBase() string { return envOr("MISTRAL_BASE", mistralDefaultBase) }
-func mistralModel() string {
-	return envOr("MISTRAL_MODEL", mistralDefaultModel)
-}
-func mistralEnabled() bool { return mistralKey() != "" }
+// mistralToolRounds bounds the tool-calling loop.
+const mistralToolRounds = 5
 
-func genDir() string { return envOr("GEN_DIR", filepath.Join("data", "gen")) }
-
-var realtimeWords = []string{
-	// English
-	"weather", "forecast", "temperature", "temp", "raining", "rain", "snow",
-	"wind", "humidity", "sunny", "cloudy", "celsius", "degrees",
-	"time", "clock", "date",
-	"news", "headlines", "headline", "breaking",
-	// Deutsch
-	"wetter", "wetterbericht", "wettervorhersage", "temperatur", "regen",
-	"schnee", "wind", "luftfeuchtigkeit", "sonnig", "bewoelkt", "bewölkt",
-	"grad", "nebel",
-	"uhr", "datum", "wochentag", "spaet", "spät",
-	"nachrichten", "schlagzeilen",
-}
-
-var imageGenWords = []string{
-	"draw", "generate", "render", "create an image", "create a picture",
-	"make an image", "make a picture", "paint", "illustration", "concept art",
-	// Deutsch
-	"zeichne", "zeichnen", "generiere", "generieren", "erzeuge", "erzeugen",
-	"erstelle", "erstellen", "male", "malen", "illustration", "konzeptkunst",
-	"konzept art",
-}
-
-var imageSearchWords = []string{
-	"find", "search", "look up", "photo of", "photos of", "picture of",
-	"pictures of", "image of", "images of", "show me a", "show me pictures",
-	"show me some", "get a picture", "find a picture", "find a photo",
-	// Deutsch
-	"zeig mir", "zeige mir", "such nach", "suche nach", "such", "suche",
-	"finde mir", "finde", "finden", "bild von", "bilder von", "bild von einem",
-	"foto von", "fotos von", "ein bild", "ein foto", "bild", "bilder", "foto",
-	"fotos", "abbildung", "grafik",
-}
-
-var imagePlainWords = []string{
-	"image", "picture", "photo", "pic", "drawing",
-	// Deutsch
-	"bild", "bilder", "bildern", "foto", "fotos", "fotografie", "abbildung", "grafik",
-}
-
-func wantsRealtime(q string) bool {
-	q = strings.ToLower(q)
-	for _, kw := range realtimeWords {
-		if strings.Contains(q, kw) {
-			return true
-		}
-	}
-	return false
-}
-
-func classifyImageRequest(q string) string {
-	q = strings.ToLower(q)
-	for _, kw := range imageGenWords {
-		if strings.Contains(q, kw) {
-			return "generate"
-		}
-	}
-	for _, kw := range imageSearchWords {
-		if strings.Contains(q, kw) {
-			return "search"
-		}
-	}
-	for _, kw := range imagePlainWords {
-		if strings.Contains(q, kw) {
-			return "search"
-		}
-	}
-	return ""
-}
-
-func mistralClient() *http.Client { return &http.Client{Timeout: 120 * time.Second} }
-
-func mistralPost(path string, body any, out any) error {
-	b, err := json.Marshal(body)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest(http.MethodPost, mistralBase()+path, bytes.NewReader(b))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+mistralKey())
-	resp, err := mistralClient().Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	rb, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("mistral %s: %d: %s", path, resp.StatusCode, strings.TrimSpace(string(rb)))
-	}
-	if out != nil {
-		return json.Unmarshal(rb, out)
-	}
-	return nil
-}
-
-func mistralGetBytes(path string) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodGet, mistralBase()+path, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+mistralKey())
-	resp, err := mistralClient().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	rb, err := io.ReadAll(io.LimitReader(resp.Body, maxDownloadBytes+1))
-	if err != nil {
-		return nil, err
-	}
-	if len(rb) > maxDownloadBytes {
-		return nil, fmt.Errorf("mistral %s: response exceeds %d bytes", path, maxDownloadBytes)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("mistral %s: %d: %s", path, resp.StatusCode, strings.TrimSpace(string(rb)))
-	}
-	return rb, nil
-}
-
-func voiceLang(voice string) string {
-	if isGermanVoice(voice) {
-		return "de"
-	}
-	return "en"
-}
-
-func handleMistralTools(w http.ResponseWriter, s *Settings, messages []chatMessage) {
+// handleMistralTools answers a real-time question with Mistral function
+// calling. clientTZ is the browser's IANA time zone (may be empty).
+func handleMistralTools(ctx context.Context, w http.ResponseWriter, s *Settings, messages []chatMessage, clientTZ string) {
+	sse := newSSE(w)
+	p := phrasesFor(s.PiperVoice)
 	msgs := make([]any, 0, len(messages))
 	for _, m := range messages {
 		msgs = append(msgs, map[string]any{"role": m.Role, "content": m.Content})
 	}
 	tools := mistralTools()
 	final := ""
-	for round := 0; round < 5; round++ {
+	for round := 0; round < mistralToolRounds; round++ {
 		var resp struct {
 			Choices []struct {
 				Message struct {
@@ -188,7 +54,7 @@ func handleMistralTools(w http.ResponseWriter, s *Settings, messages []chatMessa
 				} `json:"message"`
 			} `json:"choices"`
 		}
-		if err := mistralPost("/v1/chat/completions", map[string]any{
+		if err := mistralPost(ctx, "/v1/chat/completions", map[string]any{
 			"model":               mistralModel(),
 			"messages":            msgs,
 			"tools":               tools,
@@ -197,8 +63,11 @@ func handleMistralTools(w http.ResponseWriter, s *Settings, messages []chatMessa
 			"max_tokens":          s.MaxTokens,
 			"parallel_tool_calls": true,
 		}, &resp); err != nil {
+			if ctx.Err() != nil {
+				return
+			}
 			log.Printf("mistral chat error: %v", err)
-			writeSSE(w, phrasesFor(s.PiperVoice).satelliteDown)
+			sse.fail(satelliteFailure(p, err))
 			return
 		}
 		if len(resp.Choices) == 0 {
@@ -217,7 +86,10 @@ func handleMistralTools(w http.ResponseWriter, s *Settings, messages []chatMessa
 			break
 		}
 		for _, tc := range msg.ToolCalls {
-			result := executeMistralTool(tc.Function.Name, tc.Function.Arguments, voiceLang(s.PiperVoice))
+			result := executeMistralTool(ctx, tc.Function.Name, tc.Function.Arguments, voiceLang(s.PiperVoice), clientTZ)
+			if ctx.Err() != nil {
+				return
+			}
 			msgs = append(msgs, map[string]any{
 				"role":         "tool",
 				"tool_call_id": tc.ID,
@@ -226,10 +98,11 @@ func handleMistralTools(w http.ResponseWriter, s *Settings, messages []chatMessa
 			})
 		}
 	}
-	if final == "" {
-		final = phrasesFor(s.PiperVoice).noData
+	if strings.TrimSpace(final) == "" {
+		sse.fail(p.noData)
+		return
 	}
-	writeSSE(w, final)
+	sse.reply(final)
 }
 
 func mistralTools() []any {
@@ -238,10 +111,12 @@ func mistralTools() []any {
 			"type": "function",
 			"function": map[string]any{
 				"name":        "get_time",
-				"description": "Get the current local time and date.",
+				"description": "Get the current date and time with its UTC offset. Without arguments it returns the user's local time; pass an IANA time zone to get the time somewhere else.",
 				"parameters": map[string]any{
-					"type":       "object",
-					"properties": map[string]any{},
+					"type": "object",
+					"properties": map[string]any{
+						"timezone": map[string]any{"type": "string", "description": "Optional IANA time zone for another place, e.g. Asia/Tokyo or America/New_York. Omit for the user's own time."},
+					},
 				},
 			},
 		},
@@ -275,43 +150,82 @@ func mistralTools() []any {
 	}
 }
 
-func executeMistralTool(name, args, lang string) string {
+func executeMistralTool(ctx context.Context, name, args, lang, clientTZ string) string {
 	var p struct {
-		City  string `json:"city"`
-		Topic string `json:"topic"`
+		City     string `json:"city"`
+		Topic    string `json:"topic"`
+		Timezone string `json:"timezone"`
 	}
 	_ = json.Unmarshal([]byte(args), &p)
 	switch name {
 	case "get_time":
-		return getTimeTool()
+		return getTimeTool(time.Now(), p.Timezone, clientTZ)
 	case "get_weather":
-		return getWeatherTool(p.City, lang)
+		return getWeatherTool(ctx, p.City, lang)
 	case "get_news":
-		return getNewsTool(p.Topic, lang)
+		return getNewsTool(ctx, p.Topic, lang)
 	}
 	return `{"error":"unknown tool"}`
 }
 
-func getTimeTool() string {
-	now := time.Now()
-	b, _ := json.Marshal(map[string]string{
-		"date":     now.Format("Monday, January 2, 2006"),
-		"time":     now.Format("3:04 PM"),
-		"timezone": now.Location().String(),
-	})
+// userLocation resolves the user's time zone: the browser's zone sent with the
+// request, then HERMES_TZ / TZ, then the server's local zone.
+func userLocation(clientTZ string) *time.Location {
+	for _, name := range []string{clientTZ, os.Getenv("HERMES_TZ"), os.Getenv("TZ")} {
+		name = strings.TrimSpace(name)
+		if name == "" || name == "Local" {
+			continue
+		}
+		if loc, err := time.LoadLocation(name); err == nil {
+			return loc
+		}
+	}
+	return time.Local
+}
+
+// getTimeTool reports now in the requested zone (or the user's zone) with an
+// explicit UTC offset, so the model never has to guess what "Local" means.
+func getTimeTool(now time.Time, requestedTZ, clientTZ string) string {
+	out := map[string]string{}
+	loc := userLocation(clientTZ)
+	if tz := strings.TrimSpace(requestedTZ); tz != "" {
+		if l, err := time.LoadLocation(tz); err == nil {
+			loc = l
+		} else {
+			out["error"] = "unknown time zone " + tz + "; showing the user's local time instead"
+		}
+	}
+	t := now.In(loc)
+	abbr, _ := t.Zone()
+	name := loc.String()
+	if name == "Local" || name == "" {
+		name = abbr
+	}
+	out["date"] = t.Format("Monday, January 2, 2006")
+	out["time"] = t.Format("15:04")
+	out["time_12h"] = t.Format("3:04 PM")
+	out["timezone"] = name
+	out["zone_abbreviation"] = abbr
+	out["utc_offset"] = t.Format("-07:00")
+	out["iso8601"] = t.Format(time.RFC3339)
+	b, _ := json.Marshal(out)
 	return string(b)
 }
 
-func getWeatherTool(city, lang string) string {
+func toolError(msg string) string {
+	b, _ := json.Marshal(map[string]string{"error": msg})
+	return string(b)
+}
+
+func getWeatherTool(ctx context.Context, city, lang string) string {
 	if city == "" {
 		return `{"error":"no city provided"}`
 	}
-	lat, lon, name, err := geocodeCity(city, lang)
+	lat, lon, name, err := geocodeCity(ctx, city, lang)
 	if err != nil {
-		b, _ := json.Marshal(map[string]string{"error": err.Error()})
-		return string(b)
+		return toolError(err.Error())
 	}
-	u := fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto", lat, lon)
+	u := fmt.Sprintf("%s?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto", openMeteoForecastURL, lat, lon)
 	var cur struct {
 		Current struct {
 			Temperature2m    float64 `json:"temperature_2m"`
@@ -321,9 +235,8 @@ func getWeatherTool(city, lang string) string {
 			WindSpeed10m     float64 `json:"wind_speed_10m"`
 		} `json:"current"`
 	}
-	if err := httpGetJSON(u, &cur); err != nil {
-		b, _ := json.Marshal(map[string]string{"error": "weather lookup failed: " + err.Error()})
-		return string(b)
+	if err := httpGetJSON(ctx, u, &cur); err != nil {
+		return toolError("weather lookup failed: " + err.Error())
 	}
 	b, _ := json.Marshal(map[string]any{
 		"city":             name,
@@ -336,12 +249,12 @@ func getWeatherTool(city, lang string) string {
 	return string(b)
 }
 
-func geocodeCity(city, lang string) (float64, float64, string, error) {
+func geocodeCity(ctx context.Context, city, lang string) (float64, float64, string, error) {
 	l := "en"
 	if lang == "de" {
 		l = "de"
 	}
-	u := "https://geocoding-api.open-meteo.com/v1/search?count=1&language=" + l + "&format=json&name=" + url.QueryEscape(city)
+	u := openMeteoGeocodeURL + "?count=1&language=" + l + "&format=json&name=" + url.QueryEscape(city)
 	var res struct {
 		Results []struct {
 			Latitude  float64 `json:"latitude"`
@@ -350,7 +263,7 @@ func geocodeCity(city, lang string) (float64, float64, string, error) {
 			Country   string  `json:"country"`
 		} `json:"results"`
 	}
-	if err := httpGetJSON(u, &res); err != nil {
+	if err := httpGetJSON(ctx, u, &res); err != nil {
 		return 0, 0, "", err
 	}
 	if len(res.Results) == 0 {
@@ -400,19 +313,19 @@ func wmoCondition(code int) string {
 	return "unknown conditions"
 }
 
-func getNewsTool(topic, lang string) string {
+func getNewsTool(ctx context.Context, topic, lang string) string {
 	l, gl, ceid := "en-US", "US", "US:en"
 	if lang == "de" {
 		l, gl, ceid = "de-DE", "DE", "DE:de"
 	}
-	feedURL := "https://news.google.com/rss?hl=" + l + "&gl=" + gl + "&ceid=" + ceid
+	params := "hl=" + l + "&gl=" + gl + "&ceid=" + ceid
+	feedURL := newsFeedURL + "?" + params
 	if topic != "" {
-		feedURL = "https://news.google.com/rss/search?q=" + url.QueryEscape(topic) + "&hl=" + l + "&gl=" + gl + "&ceid=" + ceid
+		feedURL = newsFeedURL + "/search?q=" + url.QueryEscape(topic) + "&" + params
 	}
-	body, err := httpGet(feedURL)
+	body, err := httpGet(ctx, feedURL)
 	if err != nil {
-		b, _ := json.Marshal(map[string]string{"error": "news lookup failed: " + err.Error()})
-		return string(b)
+		return toolError("news lookup failed: " + err.Error())
 	}
 	var feed struct {
 		Channel struct {
@@ -430,8 +343,8 @@ func getNewsTool(topic, lang string) string {
 		Published string `json:"published"`
 	}
 	items := make([]newsItem, 0, 7)
-	for i, it := range feed.Channel.Item {
-		if i >= 7 {
+	for _, it := range feed.Channel.Item {
+		if len(items) >= 7 {
 			break
 		}
 		if strings.TrimSpace(it.Title) == "" {
@@ -446,19 +359,24 @@ func getNewsTool(topic, lang string) string {
 	return string(b)
 }
 
-// maxDownloadBytes caps bodies fetched from the network (weather, news, images)
-// so a huge response cannot blow up memory.
+// maxDownloadBytes caps bodies fetched from the network (weather, news,
+// generated images) so a huge response cannot blow up memory.
 const maxDownloadBytes = 25 << 20 // 25 MB
 
-// httpGetWithTimeout fetches a URL with a User-Agent (some APIs like Openverse
-// reject requests without one) and refuses bodies larger than maxDownloadBytes.
-func httpGetWithTimeout(u string, timeout time.Duration) ([]byte, error) {
+// userAgent is sent on all outgoing HTTP requests. Some CDNs (notably Flickr)
+// return HTTP 502 for bot-like agent strings, so keep it neutral.
+const userAgent = "HERMES/1.0 (+https://github.com/S-I-M-K-O/BT-CHATBOT)"
+
+// httpGetLimited fetches a URL with a User-Agent (some APIs like Openverse
+// reject requests without one), honours ctx (client disconnects cancel the
+// download) and refuses bodies larger than limit.
+func httpGetLimited(ctx context.Context, u string, timeout time.Duration, limit int64) ([]byte, error) {
 	client := &http.Client{Timeout: timeout}
-	req, err := http.NewRequest(http.MethodGet, u, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "HERMES/1.0 (bt-chatbot voice assistant)")
+	req.Header.Set("User-Agent", userAgent)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -467,39 +385,102 @@ func httpGetWithTimeout(u string, timeout time.Duration) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("http %d", resp.StatusCode)
 	}
-	data, err := io.ReadAll(io.LimitReader(resp.Body, maxDownloadBytes+1))
+	data, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil {
 		return nil, err
 	}
-	if len(data) > maxDownloadBytes {
-		return nil, fmt.Errorf("response exceeds %d bytes", maxDownloadBytes)
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("response exceeds %d bytes", limit)
 	}
 	return data, nil
 }
 
-func httpGet(u string) ([]byte, error) {
-	return httpGetWithTimeout(u, 30*time.Second)
+func httpGetWithTimeout(ctx context.Context, u string, timeout time.Duration) ([]byte, error) {
+	return httpGetLimited(ctx, u, timeout, maxDownloadBytes)
 }
 
-func httpGetJSON(u string, out any) error {
-	b, err := httpGet(u)
+func httpGet(ctx context.Context, u string) ([]byte, error) {
+	return httpGetWithTimeout(ctx, u, 30*time.Second)
+}
+
+func httpGetJSON(ctx context.Context, u string, out any) error {
+	b, err := httpGet(ctx, u)
 	if err != nil {
 		return err
 	}
 	return json.Unmarshal(b, out)
 }
 
-func handleMistralImage(w http.ResponseWriter, s *Settings, q string) {
-	sseBegin(w)
-	writeSSEJSON(w, map[string]any{"intent": "image"})
-	w.(http.Flusher).Flush()
+// imageExt maps a sniffed content type to a file extension, or "" when the
+// data is not an image format we serve from /gen/.
+func imageExt(data []byte) string {
+	switch http.DetectContentType(data) {
+	case "image/jpeg":
+		return ".jpg"
+	case "image/png":
+		return ".png"
+	case "image/gif":
+		return ".gif"
+	case "image/webp":
+		return ".webp"
+	}
+	return ""
+}
+
+// imageJobs limits concurrent picture searches / generations (network,
+// memory and disk heavy). Further requests wait until a slot frees or their
+// client goes away.
+var imageJobs = make(chan struct{}, 2)
+
+func acquireImageJob(ctx context.Context) bool {
+	select {
+	case imageJobs <- struct{}{}:
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
+func releaseImageJob() { <-imageJobs }
+
+// shouldResetImageAgent reports whether a /v1/conversations failure means the
+// cached agent is gone. Rate limits, 5xx and timeouts keep the agent: creating
+// a new one each time would pile up stale agents in the user's account.
+func shouldResetImageAgent(err error) bool {
+	ae, ok := err.(*mistralAPIError)
+	if !ok {
+		return false
+	}
+	switch ae.Status {
+	case http.StatusNotFound:
+		return true
+	case http.StatusBadRequest, http.StatusUnprocessableEntity:
+		return strings.Contains(strings.ToLower(ae.Body), "agent")
+	}
+	return false
+}
+
+func handleMistralImage(ctx context.Context, w http.ResponseWriter, s *Settings, q string) {
+	sse := newSSE(w)
+	sse.event(map[string]any{"intent": "image"})
 
 	p := phrasesFor(s.PiperVoice)
+	if !acquireImageJob(ctx) {
+		return
+	}
+	defer releaseImageJob()
 
-	agentID, err := ensureImageAgent()
+	agentID, err := ensureImageAgent(ctx)
 	if err != nil {
+		if ctx.Err() != nil {
+			return
+		}
 		log.Printf("mistral image agent error: %v", err)
-		writeSSE(w, p.imageFabricator)
+		if isMistralAuthError(err) {
+			sse.fail(p.satelliteKeyRejected)
+			return
+		}
+		sse.fail(p.imageFabricator)
 		return
 	}
 	var conv struct {
@@ -509,13 +490,23 @@ func handleMistralImage(w http.ResponseWriter, s *Settings, q string) {
 			Content json.RawMessage `json:"content"`
 		} `json:"outputs"`
 	}
-	if err := mistralPost("/v1/conversations", map[string]any{
+	if err := mistralPost(ctx, "/v1/conversations", map[string]any{
 		"agent_id": agentID,
 		"inputs":   q,
 		"store":    false,
 	}, &conv); err != nil {
+		if ctx.Err() != nil {
+			return
+		}
 		log.Printf("mistral image conversation error: %v", err)
-		writeSSE(w, p.imageSynthesis+err.Error())
+		if shouldResetImageAgent(err) {
+			forgetImageAgent(agentID)
+		}
+		if isMistralAuthError(err) {
+			sse.fail(p.satelliteKeyRejected)
+			return
+		}
+		sse.fail(p.imageSynthesis)
 		return
 	}
 
@@ -547,178 +538,40 @@ func handleMistralImage(w http.ResponseWriter, s *Settings, q string) {
 		}
 	}
 	if fileID == "" {
-		writeSSE(w, p.imageEmpty)
+		sse.reply(p.imageEmpty)
 		return
 	}
-	data, err := mistralGetBytes("/v1/files/" + fileID + "/content")
+	data, err := mistralGetBytes(ctx, "/v1/files/"+url.PathEscape(fileID)+"/content")
 	if err != nil {
+		if ctx.Err() != nil {
+			return
+		}
 		log.Printf("mistral image download error: %v", err)
-		writeSSE(w, p.imageRetrieve)
+		sse.fail(p.imageRetrieve)
+		return
+	}
+	ext := imageExt(data)
+	if ext == "" {
+		log.Printf("mistral image: unexpected content type %s", http.DetectContentType(data))
+		sse.fail(p.imageRetrieve)
 		return
 	}
 	dir := genDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		writeSSE(w, p.imageStore)
+		sse.fail(p.imageStore)
 		return
-	}
-	ext := ".png"
-	switch http.DetectContentType(data) {
-	case "image/jpeg":
-		ext = ".jpg"
-	case "image/gif":
-		ext = ".gif"
-	case "image/webp":
-		ext = ".webp"
 	}
 	name := fmt.Sprintf("hermes_%d%s", time.Now().UnixNano(), ext)
 	if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
-		writeSSE(w, p.imageStore)
+		log.Printf("mistral image store error: %v", err)
+		sse.fail(p.imageStore)
 		return
 	}
-
-	sseBegin(w)
-	streamSSE(w, text)
-	writeSSEJSON(w, map[string]any{"image": "/gen/" + name})
-	writeSSEJSON(w, map[string]any{"done": true})
-	w.(http.Flusher).Flush()
-}
-
-func sseBegin(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("X-Accel-Buffering", "no")
-}
-
-func streamSSE(w http.ResponseWriter, text string) {
-	for _, ch := range strings.Split(text, "") {
-		writeSSEJSON(w, map[string]any{"delta": ch})
-		w.(http.Flusher).Flush()
+	enforceGenBudget()
+	if strings.TrimSpace(text) == "" {
+		text = p.imageCaption
 	}
-}
-
-func handleImageSearch(w http.ResponseWriter, s *Settings, q string) {
-	sseBegin(w)
-	writeSSEJSON(w, map[string]any{"intent": "image"})
-	w.(http.Flusher).Flush()
-
-	p := phrasesFor(s.PiperVoice)
-
-	subject := extractImageSubject(q)
-	if subject == "" {
-		writeSSE(w, p.searchNoSubject)
-		return
-	}
-	u := "https://api.openverse.org/v1/images/?page_size=3&q=" + url.QueryEscape(subject)
-	var res struct {
-		Results []struct {
-			URL   string `json:"url"`
-			Title string `json:"title"`
-		} `json:"results"`
-	}
-	if err := httpGetJSON(u, &res); err != nil || len(res.Results) == 0 {
-		writeSSE(w, p.searchEmpty)
-		return
-	}
-	dir := genDir()
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		writeSSE(w, p.searchStore)
-		return
-	}
-	var urls []string
-	for i, r := range res.Results {
-		if i >= 3 {
-			break
-		}
-		data, err := httpGetWithTimeout(r.URL, 15*time.Second)
-		if err != nil {
-			log.Printf("image search download failed for %s: %v", r.URL, err)
-			continue
-		}
-		ext := ".jpg"
-		switch http.DetectContentType(data) {
-		case "image/png":
-			ext = ".png"
-		case "image/gif":
-			ext = ".gif"
-		case "image/webp":
-			ext = ".webp"
-		}
-		name := fmt.Sprintf("search_%d_%d%s", time.Now().UnixNano(), i, ext)
-		if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
-			continue
-		}
-		urls = append(urls, "/gen/"+name)
-	}
-	if len(urls) == 0 {
-		writeSSE(w, p.searchDownload)
-		return
-	}
-	streamSSE(w, fmt.Sprintf(p.searchFound, len(urls), subject))
-	for _, u := range urls {
-		writeSSEJSON(w, map[string]any{"image": u})
-	}
-	writeSSEJSON(w, map[string]any{"done": true})
-	w.(http.Flusher).Flush()
-}
-
-func extractImageSubject(q string) string {
-	q = strings.ToLower(strings.TrimSpace(q))
-	for _, p := range []string{
-		"zeig mir ein", "zeige mir ein", "zeig mir", "zeige mir", "such nach",
-		"suche nach", "finde mir", "finde", "suche", "show me", "find me", "find",
-		"look up", "search for", "get me", "can you show", "show",
-	} {
-		if strings.HasPrefix(q, p) {
-			q = strings.TrimSpace(q[len(p):])
-			break
-		}
-	}
-	drop := map[string]bool{
-		"a": true, "an": true, "the": true, "of": true, "for": true, "me": true,
-		"picture": true, "pictures": true, "photo": true, "photos": true,
-		"image": true, "images": true, "some": true, "any": true, "please": true,
-		"ein": true, "eine": true, "einen": true, "einem": true, "einer": true,
-		"eines": true, "der": true, "die": true, "das": true, "den": true,
-		"dem": true, "des": true, "mir": true, "bitte": true, "mal": true,
-		"etwas": true, "von": true, "bild": true, "bilder": true, "bildern": true,
-		"foto": true, "fotos": true, "abbildung": true, "grafik": true,
-	}
-	var kept []string
-	for _, w := range strings.Fields(q) {
-		if !drop[w] {
-			kept = append(kept, w)
-		}
-	}
-	if len(kept) == 0 {
-		return strings.TrimSpace(q)
-	}
-	return strings.Join(kept, " ")
-}
-
-func ensureImageAgent() (string, error) {
-	imageAgentMu.Lock()
-	defer imageAgentMu.Unlock()
-	if imageAgentID != "" {
-		return imageAgentID, nil
-	}
-	var agent struct {
-		ID string `json:"id"`
-	}
-	err := mistralPost("/v1/agents", map[string]any{
-		"model":        mistralModel(),
-		"name":         "HERMES Image Generator",
-		"description":  "Generates images for the HERMES voice assistant.",
-		"instructions": "You generate images on demand. Use the image_generation tool whenever the user asks to see an image or picture. Keep any spoken reply to one short sentence.",
-		"tools":        []any{map[string]any{"type": "image_generation"}},
-	}, &agent)
-	if err != nil {
-		return "", err
-	}
-	if agent.ID == "" {
-		return "", fmt.Errorf("empty agent id from Mistral")
-	}
-	imageAgentID = agent.ID
-	log.Printf("created Mistral image agent %s", agent.ID)
-	return agent.ID, nil
+	sse.text(text)
+	sse.event(map[string]any{"image": "/gen/" + name})
+	sse.done()
 }

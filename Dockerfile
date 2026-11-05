@@ -2,7 +2,6 @@ FROM golang:1.22-alpine AS build
 WORKDIR /src
 COPY go.mod ./
 COPY *.go ./
-RUN go mod download
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /bt-chatbot .
 
 FROM debian:bookworm-slim
@@ -30,4 +29,6 @@ ENV VOICE_DIR=/app/voices
 ENV LD_LIBRARY_PATH=/opt/piper
 
 EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD curl -fsS "http://localhost:${PORT}/api/health" || exit 1
 CMD ["/app/bt-chatbot"]

@@ -8,13 +8,13 @@ import (
 func TestLocalAnswer(t *testing.T) {
 	known := []string{"hello", "hi pilot", "who are you", "how are you", "thanks", "bye"}
 	for _, q := range known {
-		if got := localAnswer(q); got == "" {
+		if got := localAnswer(q, "en"); got == "" {
 			t.Errorf("localAnswer(%q): expected a canned reply, got empty", q)
 		}
 	}
 	unknown := []string{"what is the weather like", "find a picture of a cat", "random gibberish"}
 	for _, q := range unknown {
-		if got := localAnswer(q); got != "" {
+		if got := localAnswer(q, "en"); got != "" {
 			t.Errorf("localAnswer(%q): expected empty, got %q", q, got)
 		}
 	}
@@ -114,8 +114,17 @@ func TestEffectiveSystemPrompt(t *testing.T) {
 	custom := defaultSettings()
 	custom.PiperVoice = "JarvisDE"
 	custom.SystemPrompt = "You are my personal robot."
-	if got := effectiveSystemPrompt(custom); got != custom.SystemPrompt {
-		t.Error("expected hand-written custom prompt to be respected")
+	got := effectiveSystemPrompt(custom)
+	if !strings.HasPrefix(got, custom.SystemPrompt) || !strings.Contains(got, germanReplyInstruction) {
+		t.Errorf("expected custom prompt kept plus German reply instruction, got %q", got)
+	}
+	if again := effectiveSystemPrompt(&Settings{PiperVoice: "JarvisDE", SystemPrompt: got}); again != got {
+		t.Error("German reply instruction must not be appended twice")
+	}
+	customEN := defaultSettings()
+	customEN.SystemPrompt = "You are my personal robot."
+	if got := effectiveSystemPrompt(customEN); got != customEN.SystemPrompt {
+		t.Error("expected hand-written custom prompt to be respected for English voices")
 	}
 }
 
