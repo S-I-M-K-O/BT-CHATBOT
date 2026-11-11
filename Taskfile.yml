@@ -1,0 +1,184 @@
+# HERMES tasks — run with go-task (https://taskfile.dev): `brew install go-task`.
+# `task` lists everything; `task rebuild` is the one you'll use most.
+version: "3"
+
+vars:
+  COMPOSE: docker compose
+  COMPOSE_LAN: docker compose -f docker-compose.yml -f docker-compose.lan.yml
+  SERVICE: bt-chatbot
+  URL: http://localhost:8080
+
+tasks:
+  default:
+    desc: List all tasks
+    silent: true
+    cmds:
+      - task --list
+
+  # ------------------------------------------------------------ Docker
+
+  rebuild:
+    desc: Rebuild the image and restart the container (after code changes), then wait until it is healthy
+    cmds:
+      - mkdir -p data
+      - "{{.COMPOSE}} up -d --build"
+      - task: wait
+
+  up:
+    desc: Start the container (no rebuild)
+    cmds:
+      - mkdir -p data
+      - "{{.COMPOSE}} up -d"
+      - task: wait
+
+  down:
+    desc: Stop and remove the container (data/ is kept)
+    cmds:
+      - "{{.COMPOSE}} down"
+
+  restart:
+    desc: Restart the container without rebuilding (e.g. after editing .env)
+    cmds:
+      - "{{.COMPOSE}} up -d --force-recreate"
+      - task: wait
+
+  rebuild:lan:
+    desc: Rebuild in the LAN layout (reachable from phones; needs HERMES_TOKEN in .env)
+    cmds:
+      - mkdir -p data
+      - "{{.COMPOSE_LAN}} up -d --build"
+      - task: wait
+
+  rebuild:clean:
+    desc: Rebuild the image from scratch without the Docker cache
+    cmds:
+      - "{{.COMPOSE}} build --no-cache"
+      - "{{.COMPOSE}} up -d"
+      - task: wait
+
+  logs:
+    desc: Follow the container logs (Ctrl+C to stop); health checks are hidden
+    cmds:
+      - "{{.COMPOSE}} logs -f --tail 100 {{.SERVICE}} | grep --line-buffered -v 'GET /api/health'"
+
+  ps:
+    desc: Show container state and health
+    cmds:
+      - "{{.COMPOSE}} ps"
+
+  wait:
+    desc: Wait until the container reports healthy (up to 60 s)
+    silent: true
+    cmds:
+      - |
+        for i in $(seq 1 30); do
+          s=$(docker inspect -f '{{"{{"}}.State.Health.Status{{"}}"}}' {{.SERVICE}} 2>/dev/null || echo missing)
+          if [ "$s" = healthy ]; then echo "HERMES is healthy → {{.URL}}"; exit 0; fi
+          sleep 2
+        done
+        echo "HERMES did not become healthy — run: task logs"; exit 1
+
+  status:
+    desc: Print HERMES's own status (Ollama, Piper, features)
+    cmds:
+      - curl -fsS {{.URL}}/api/status | python3 -m json.tool
+
+  open:
+    desc: Open HERMES in the default browser
+    cmds:
+      - open {{.URL}}
+
+  shell:
+    desc: Open a shell inside the running container
+    cmds:
+      - "{{.COMPOSE}} exec {{.SERVICE}} sh"
+
+  # ------------------------------------------------------------ Local (without Docker)
+
+  run:
+    desc: Run HERMES directly with Go on http://localhost:8080 (needs Piper on PATH for the voice)
+    deps: [assets]
+    cmds:
+      - go run ./cmd/hermes
+
+  build:
+    desc: Build the HERMES binary into bin/hermes
+    cmds:
+      - CGO_ENABLED=0 go build -o bin/hermes ./cmd/hermes
+
+  assets:
+    desc: Download the voice-ID model, ONNX runtime, pdf.js and Readability (sha256-checked, cached)
+    cmds:
+      - sh scripts/fetch-assets.sh
+    # One file per group (voice ID, pdf.js, Readability), each the last one the
+    # script fetches for it, so a half-finished download is retried.
+    status:
+      - test -f web/static/vendor/models/campplus-zh-en-adv-16k.onnx
+      - test -f web/static/vendor/pdfjs-4.10.38/pdf.worker.min.mjs
+      - test -f web/static/vendor/readability-0.6.0/Readability.js
+
+  models:
+    desc: Pull the Ollama models HERMES uses (chat + embeddings)
+    cmds:
+      - ollama pull qwen3.5:latest
+      - ollama pull embeddinggemma
+
+  # ------------------------------------------------------------ Quality
+
+  test:
+    desc: Run all tests (Go with the race detector + frontend)
+    cmds:
+      - task: test:go
+      - task: test:js
+
+  test:go:
+    desc: Go tests with the race detector
+    cmds:
+      - go test -race -count=1 ./...
+
+  test:js:
+    desc: Frontend tests (Node 18+)
+    cmds:
+      - node --test web/tests/
+
+  check:
+    desc: Everything CI checks — gofmt, go vet, all tests, JS syntax
+    cmds:
+      - test -z "$(gofmt -l cmd internal)" || (gofmt -l cmd internal && echo "run: task fmt" && exit 1)
+      - go vet ./...
+      - task: test
+      - for f in web/static/*.js; do node --check "$f" || exit 1; done
+      - sh -n scripts/fetch-assets.sh
+
+  fmt:
+    desc: Format the Go code
+    cmds:
+      - gofmt -w cmd internal
+
+  # ------------------------------------------------------------ Data & config
+
+  config:
+    desc: Show the hermes.conf status (path, managed keys, errors)
+    cmds:
+      - curl -fsS {{.URL}}/api/config | python3 -m json.tool
+
+  config:export:
+    desc: Save the current settings as a fully commented hermes.conf.export in data/
+    cmds:
+      - curl -fsS {{.URL}}/api/config/export -o data/hermes.conf.export
+      - echo "written data/hermes.conf.export — rename to data/hermes.conf to use it"
+
+  backup:
+    desc: Back up data/ (settings, people, memories, reminders, lists, documents) to backups/
+    cmds:
+      # data/ holds 0600 secrets and voiceprints; tar would write the archive
+      # with the umask (usually world-readable), so keep backups/ owner-only.
+      - mkdir -p backups
+      - chmod 700 backups
+      - f=backups/hermes-data-$(date +%Y%m%d-%H%M%S).tar.gz && touch "$f" && chmod 600 "$f" && tar czf "$f" data
+      - ls -lh backups | tail -3
+
+  token:
+    desc: Generate a random token for HERMES_TOKEN / HERMES_LISTS_TOKEN
+    cmds:
+      - openssl rand -hex 32

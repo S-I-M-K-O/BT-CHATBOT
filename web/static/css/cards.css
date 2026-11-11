@@ -1,0 +1,408 @@
+/* =====================================================================
+   HERMES chat cards (static/cards.js): compact cards under a HERMES reply
+   bubble (briefing, calendar, home, reminder/timer, list, docs, link,
+   memory). Uses the tokens from style.css (:root). Prefix: .hc-* / .hcard.
+   ===================================================================== */
+
+.hcards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  width: 360px;
+  max-width: 100%;
+}
+
+.hcard {
+  position: relative;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--cyan);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  overflow-wrap: anywhere;
+  animation: hcIn var(--t-med) var(--ease) both;
+}
+@keyframes hcIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.hcard.hc-ok {
+  border-left-color: var(--ok);
+}
+.hcard.hc-refused {
+  border-left-color: var(--warn);
+  background: rgba(245, 165, 36, 0.06);
+  color: var(--muted);
+}
+.hcard.hc-muted {
+  border-left-color: var(--faint);
+  color: var(--muted);
+}
+
+.hc-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.hc-icon {
+  flex: none;
+  font-size: 13px;
+  line-height: 1;
+}
+.hc-title {
+  min-width: 0;
+}
+.hc-empty,
+.hc-more,
+.hc-via {
+  color: var(--faint);
+  font-size: 12px;
+}
+.hc-more {
+  margin-top: 4px;
+}
+.hc-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--cyan);
+  background: var(--cyan-soft);
+  white-space: nowrap;
+  vertical-align: 1px;
+}
+.hc-badge-warn {
+  color: var(--warn);
+  background: rgba(245, 165, 36, 0.14);
+}
+.hc-warn {
+  color: var(--warn);
+}
+
+/* ---------------------------------------------------------------- briefing */
+
+.hc-greeting {
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.hc-weather {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 10px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  background: var(--panel3);
+}
+.hc-wx-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+.hc-wx-temp {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+.hc-wx-text {
+  color: var(--muted);
+  font-size: 12px;
+}
+.hc-sec {
+  padding: 5px 0;
+  border-top: 1px solid var(--border);
+}
+.hc-sec:first-child {
+  border-top: 0;
+}
+.hc-sec-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.hc-sec-text {
+  margin: 2px 0 0;
+}
+.hc-collapse > summary {
+  cursor: pointer;
+  list-style: none;
+  border-radius: 4px;
+}
+.hc-collapse > summary::-webkit-details-marker {
+  display: none;
+}
+.hc-collapse > summary::after {
+  content: "▸";
+  margin-left: auto;
+  color: var(--faint);
+  transition: transform var(--t-fast) var(--ease);
+}
+.hc-collapse[open] > summary::after {
+  transform: rotate(90deg);
+}
+.hc-collapse > summary:hover {
+  color: var(--text);
+}
+
+/* ---------------------------------------------------------------- calendar */
+
+.hc-day {
+  margin: 6px 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+.hc-day:first-of-type {
+  margin-top: 0;
+}
+.hc-events,
+.hc-rems,
+.hc-items,
+.hc-docs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.hc-event {
+  display: flex;
+  gap: 10px;
+  padding: 3px 0;
+}
+.hc-time {
+  flex: none;
+  min-width: 86px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--cyan);
+  padding-top: 1px;
+}
+.hc-time.hc-allday {
+  font-family: inherit;
+  color: var(--muted);
+}
+.hc-ev-body {
+  min-width: 0;
+}
+.hc-ev-loc {
+  display: block;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+/* ---------------------------------------------------------------- home */
+
+.hc-home-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.hc-home-target {
+  font-weight: 600;
+  min-width: 0;
+}
+.hc-state {
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.hc-state.hc-state-warn {
+  color: var(--warn);
+  background: rgba(245, 165, 36, 0.12);
+}
+
+/* ---------------------------------------------------------------- reminders */
+
+.hc-rem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.hc-rems .hc-rem {
+  padding: 5px 0;
+  border-top: 1px solid var(--border);
+}
+.hc-rems .hc-rem:first-child {
+  border-top: 0;
+}
+.hc-rem-body {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.hc-rem-text {
+  display: block;
+}
+.hc-private .hc-rem-text {
+  font-style: italic;
+  color: var(--muted);
+}
+.hc-rem-when {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.hc-countdown {
+  font-family: var(--mono);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.hc-rem-person {
+  color: var(--faint);
+}
+.hc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.hc-actions button.small {
+  padding: 4px 10px;
+  font-size: 12px;
+  min-height: 30px;
+}
+.hc-status {
+  font-size: 12px;
+  color: var(--ok);
+}
+.hc-status.hc-warn {
+  color: var(--warn);
+}
+.hc-settled .hc-rem-text {
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------------- list */
+
+.hc-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+.hc-check {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.hc-check:disabled {
+  cursor: default;
+}
+.hc-item-text {
+  min-width: 0;
+  cursor: pointer;
+}
+.hc-item-done .hc-item-text,
+.hc-item-gone .hc-item-text {
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+/* ---------------------------------------------------------------- docs */
+
+.hc-doc {
+  padding: 1px 0 1px 14px;
+  position: relative;
+}
+.hc-doc::before {
+  content: "›";
+  position: absolute;
+  left: 2px;
+  color: var(--faint);
+}
+
+/* ---------------------------------------------------------------- link */
+
+.hcard-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hc-link-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+  color: var(--text);
+  text-decoration: none;
+  border-radius: 4px;
+}
+a.hc-link-body:hover .hc-link-title {
+  color: var(--cyan);
+  text-decoration: underline;
+}
+.hc-link-site {
+  font-size: 11px;
+  color: var(--faint);
+  text-transform: lowercase;
+}
+.hc-link-title {
+  font-weight: 600;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ---------------------------------------------------------------- phones */
+
+/* .msg is up to 92% wide on phones: the card takes all of it (a 390px
+   screen leaves ~340px), and touch targets grow */
+@media (max-width: 640px) {
+  .hc-time {
+    min-width: 64px;
+  }
+  .hc-actions button.small {
+    min-height: 36px;
+  }
+  .hc-check {
+    width: 22px;
+    height: 22px;
+  }
+  .hc-item {
+    min-height: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hcard {
+    animation: none;
+  }
+  .hc-collapse > summary::after {
+    transition: none;
+  }
+}

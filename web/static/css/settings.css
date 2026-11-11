@@ -1,0 +1,446 @@
+/* =====================================================================
+   HERMES — the settings window.
+   Desktop: a centred window, category sidebar + scrolling content.
+   Phone (≤640px): full screen; the category list is the first screen,
+   a category opens with a back button (.show-content).
+   Form controls (labels, inputs, ranges, hints) stay in style.css.
+   ===================================================================== */
+
+.settings {
+  position: fixed;
+  z-index: 50;
+  top: 50%;
+  left: 50%;
+  width: min(1100px, 94vw);
+  height: min(800px, 90vh);
+  height: min(800px, 90dvh);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--panel);
+  border: 1px solid var(--border-hi);
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 106, 0, 0.04);
+  overflow: hidden;
+  opacity: 0;
+  transform: translate(-50%, -48%) scale(0.98);
+  transition: opacity var(--t-med) var(--ease), transform var(--t-med) var(--ease);
+}
+.settings.open {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
+/* ------------------------------------------------------------ header */
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px 14px 22px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--panel3), var(--panel));
+}
+.settings-header h2 {
+  font-size: 18px;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  min-width: 0;
+}
+.settings-back {
+  display: none;
+}
+.settings-search {
+  position: relative;
+  flex: 1;
+  max-width: 380px;
+  margin-left: auto;
+}
+.settings-search svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: var(--faint);
+  stroke-width: 2;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+.settings .settings-search input {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 8px 12px 8px 34px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition: border-color var(--t-fast) var(--ease);
+}
+.settings .settings-search input:focus {
+  border-color: var(--accent);
+}
+
+/* ------------------------------------------------------------ body */
+
+.settings-main {
+  display: grid;
+  grid-template-columns: 272px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 10px;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--panel2);
+  overscroll-behavior: contain;
+}
+.settings-nav .nav-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  text-align: left;
+  font-size: 14px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 9px;
+}
+.settings-nav .nav-item:hover {
+  color: var(--text);
+  background: var(--panel3);
+  border-color: transparent;
+}
+.settings-nav .nav-item:active {
+  transform: none;
+}
+.settings-nav .nav-item[aria-current="true"] {
+  color: var(--text);
+  background: var(--accent-soft);
+  border-color: rgba(255, 106, 0, 0.35);
+}
+.settings-nav .nav-item[aria-current="true"] .nav-icon svg {
+  stroke: var(--accent);
+}
+.nav-icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.nav-label {
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.nav-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+}
+.nav-count:empty {
+  display: none;
+}
+.settings-nav .nav-item.no-hits {
+  opacity: 0.4;
+}
+.nav-chev {
+  display: none;
+}
+
+.settings-body {
+  overflow-y: auto;
+  padding: 22px 32px 28px;
+  overscroll-behavior: contain;
+}
+.settings-cat {
+  max-width: 720px;
+}
+.settings .settings-cat {
+  margin-bottom: 0;
+}
+.settings h3.cat-title {
+  font-size: 20px;
+  font-weight: 650;
+  color: var(--text);
+  margin-bottom: 18px;
+  letter-spacing: 0.2px;
+}
+.settings h4.group {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin: 22px 0 12px;
+}
+.settings h4.group.warn {
+  color: var(--warn);
+}
+.settings .settings-cat > h4.group:first-of-type {
+  margin-top: 4px;
+}
+.settings .setting {
+  margin-bottom: 4px;
+}
+.settings .setting > button {
+  margin-top: 4px;
+}
+.settings .settings-cat .note {
+  margin-top: 22px;
+}
+.settings .cat-slot .feature-section {
+  margin-bottom: 26px;
+}
+/* one module section alone in its category: the category title says it */
+.settings-cat.solo .cat-slot > .feature-section > h3.group {
+  display: none;
+}
+
+/* searching: every category with hits, stacked, without the extras */
+.settings.searching .settings-cat {
+  margin-bottom: 30px;
+}
+.settings.searching .settings-cat > .note,
+.settings.searching .settings-cat > h4.group,
+.settings.searching .config-sample {
+  display: none;
+}
+.settings.searching .settings-cat.solo .cat-slot > .feature-section > h3.group {
+  display: block;
+}
+.settings .search-miss {
+  display: none !important;
+}
+.settings-noresults {
+  color: var(--muted);
+  font-size: 14px;
+  padding: 30px 0;
+}
+
+/* ------------------------------------------------------------ managed keys */
+
+.managed-badge {
+  display: inline-block;
+  margin: 0 0 0 8px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  color: var(--cyan);
+  background: var(--cyan-soft);
+  border: 1px solid rgba(57, 182, 255, 0.35);
+  border-radius: 999px;
+  vertical-align: 1px;
+  cursor: help;
+}
+.settings [data-managed]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------ config file */
+
+.config-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 18px;
+  margin: 8px 0 16px;
+  font-size: 13px;
+}
+.config-facts dt {
+  color: var(--muted);
+}
+.config-facts dd {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.config-facts dd.ok {
+  color: var(--ok);
+}
+.config-facts code,
+.cfg-key {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.cfg-key {
+  display: inline-block;
+  margin: 0 2px 4px 0;
+  padding: 1px 7px;
+  color: var(--cyan);
+  background: var(--cyan-soft);
+  border-radius: 6px;
+}
+.config-errors ul {
+  list-style: none;
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--warn);
+  line-height: 1.5;
+}
+.config-errors li + li {
+  margin-top: 4px;
+}
+.settings .config-actions {
+  flex-wrap: wrap;
+  margin: 4px 0 10px;
+}
+.settings .config-intro {
+  margin: 0 0 8px;
+}
+a.btn {
+  display: inline-block;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  color: var(--text);
+  text-decoration: none;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: border-color var(--t-fast) var(--ease);
+}
+a.btn:hover {
+  border-color: var(--accent);
+}
+.config-sample {
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+/* ------------------------------------------------------------ footer */
+
+.settings-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px calc(12px + var(--safe-b));
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+}
+.settings-footer .footer-spacer {
+  flex: 1;
+}
+.settings-footer .primary {
+  min-width: 140px;
+}
+
+/* ------------------------------------------------------------ phone */
+
+@media (max-width: 640px) {
+  .settings {
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100%;
+    border: none;
+    border-radius: 0;
+    transform: translateY(16px);
+  }
+  .settings.open {
+    transform: none;
+  }
+  .settings-header {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: calc(10px + var(--safe-t)) calc(10px + var(--safe-r)) 10px calc(14px + var(--safe-l));
+  }
+  .settings-header h2 {
+    flex: 1;
+    font-size: 17px;
+  }
+  .settings-search {
+    order: 3;
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .settings.show-content .settings-back {
+    display: inline-grid;
+    margin-left: -6px;
+  }
+  .settings-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .settings-nav {
+    border-right: none;
+    padding: 8px calc(10px + var(--safe-r)) 16px calc(10px + var(--safe-l));
+    background: var(--panel);
+  }
+  .settings-nav .nav-item {
+    grid-template-columns: 24px minmax(0, 1fr) auto 12px;
+    padding: 13px 12px;
+    font-size: 15px;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+  }
+  .settings-nav .nav-item[aria-current="true"] {
+    background: transparent;
+    border-color: transparent transparent var(--border);
+  }
+  .nav-chev {
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--faint);
+    border-top: 2px solid var(--faint);
+    transform: rotate(45deg);
+  }
+  .settings-body {
+    display: none;
+    padding: 16px calc(16px + var(--safe-r)) 24px calc(16px + var(--safe-l));
+  }
+  .settings.show-content .settings-nav {
+    display: none;
+  }
+  .settings.show-content .settings-body {
+    display: block;
+  }
+  .settings h3.cat-title {
+    font-size: 18px;
+  }
+  .settings-footer {
+    padding: 10px calc(12px + var(--safe-r)) calc(10px + var(--safe-b)) calc(12px + var(--safe-l));
+    gap: 8px;
+  }
+  .settings-footer button {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .settings-footer .primary {
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings,
+  .settings.open {
+    transition: none;
+  }
+}

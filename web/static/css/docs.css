@@ -1,0 +1,250 @@
+/* =====================================================================
+   HERMES documents (W2-L): the hub tab "Dokumente" / "Documents" and the
+   Settings → Documents section. Uses the tokens from style.css (:root).
+   Prefix: .docs-*.
+   ===================================================================== */
+
+.docs {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.45;
+}
+.docs select,
+.docs input[type="search"] {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  min-width: 0;
+  transition: border-color var(--t-fast) var(--ease);
+}
+.docs select:focus,
+.docs input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+.docs-intro,
+.docs-hint {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+.docs-hint {
+  margin: 12px 0 0;
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------------- upload */
+
+.docs-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.docs-upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.docs-owner-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--muted);
+  min-width: 0;
+}
+.docs-owner {
+  max-width: 220px;
+}
+.docs-drop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+  padding: 12px;
+  border: 1px dashed var(--border-hi);
+  border-radius: var(--radius);
+  color: var(--faint);
+  text-align: center;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.docs-drop.is-over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* files dragged over the chat area (app.js → "files:drop") */
+#chat.is-file-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: -6px;
+  background: var(--accent-soft);
+}
+
+/* ---------------------------------------------------------------- notes */
+
+.docs-note,
+.docs-locked,
+.docs-folder {
+  padding: 10px 12px;
+  margin: 0 0 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-hi);
+  background: var(--panel2);
+  color: var(--muted);
+}
+.docs-note.warn {
+  border-left: 3px solid var(--warn);
+}
+.docs-locked,
+.docs-folder {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.docs-locked p {
+  margin: 0;
+}
+.docs-folder span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.docs-error {
+  margin: 0 0 12px;
+  color: var(--danger);
+}
+.docs-empty {
+  margin: 8px 0;
+  color: var(--faint);
+}
+
+/* ---------------------------------------------------------------- search */
+
+.docs-search {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+}
+.docs-hits {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.docs-hit {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--cyan-soft);
+  border: 1px solid var(--border);
+}
+.docs-hit-name {
+  font-weight: 600;
+  color: var(--cyan);
+  margin-bottom: 2px;
+}
+.docs-hit-text {
+  margin: 0;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------- list */
+
+.docs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.docs-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+}
+.docs-item-main {
+  flex: 1;
+  min-width: 0;
+}
+.docs-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.docs-meta {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.docs-status {
+  font-weight: 600;
+}
+.docs-status.is-ready {
+  color: var(--ok);
+}
+.docs-status.is-lexical {
+  color: var(--cyan);
+}
+.docs-status.is-indexing {
+  color: var(--warn);
+}
+.docs-status.is-error {
+  color: var(--danger);
+}
+.docs-del {
+  flex: none;
+}
+
+/* ---------------------------------------------------------------- settings */
+
+.docs-settings p {
+  margin: 0 0 8px;
+}
+.docs-settings .warn {
+  color: var(--warn);
+}
+.docs-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+@media (max-width: 600px) {
+  .docs-owner-row {
+    margin-left: 0;
+    width: 100%;
+  }
+  .docs-owner {
+    flex: 1;
+    max-width: none;
+  }
+  .docs-item {
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .docs-drop,
+  .docs select,
+  .docs input {
+    transition: none;
+  }
+}
