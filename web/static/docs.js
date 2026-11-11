@@ -39,7 +39,7 @@
       tab: "Documents",
       section: "Documents",
       intro:
-        "Add your own notes, contracts or manuals. HERMES answers questions about them with the local model only – e.g. “what does my lease say about pets?”. Nothing is sent to Mistral.",
+        "Add your own notes, contracts or manuals. HERMES answers questions about them with the local model only – e.g. “what does my lease say about pets?”. Nothing leaves this computer.",
       upload: "Add files …",
       dropHere: "Drop .pdf, .md or .txt files here",
       dropChat: "Files dropped on the chat are added to the household documents.",
@@ -103,7 +103,7 @@
       tab: "Dokumente",
       section: "Dokumente",
       intro:
-        "Füge eigene Notizen, Verträge oder Anleitungen hinzu. HERMES beantwortet Fragen dazu nur mit dem lokalen Modell – z. B. „Was steht in meinem Mietvertrag über Kündigung?“. Nichts geht an Mistral.",
+        "Füge eigene Notizen, Verträge oder Anleitungen hinzu. HERMES beantwortet Fragen dazu nur mit dem lokalen Modell – z. B. „Was steht in meinem Mietvertrag über Kündigung?“. Nichts verlässt diesen Computer.",
       upload: "Dateien hinzufügen …",
       dropHere: ".pdf-, .md- oder .txt-Dateien hier ablegen",
       dropChat: "Auf den Chat gezogene Dateien kommen zu den Haushaltsdokumenten.",

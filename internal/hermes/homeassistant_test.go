@@ -1193,7 +1193,7 @@ func TestHomeRoutes(t *testing.T) {
 }
 
 // The whole chat path with an English voice: the reply, the SSE stream and
-// the meta tag (never Mistral) — and the token is nowhere.
+// the meta tag (a tool tag, never realtime) — and the token is nowhere.
 func TestHomeChatEndToEndEnglishVoice(t *testing.T) {
 	haEnv(t)
 	chatEnv(t)

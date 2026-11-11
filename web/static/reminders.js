@@ -117,7 +117,7 @@
       notifyAsk: "Allow notifications",
       notifyUnavailable: "Not available here (needs localhost or HTTPS).",
       memorySaver:
-        "Chrome may put background tabs to sleep and then miss reminders. Add localhost under chrome://settings/performance to “Always keep these sites active”. See “Reminders & timers” in the README.",
+        "Chrome may put background tabs to sleep and then miss reminders. Add localhost under chrome://settings/performance to “Always keep these sites active”. See docs/reminders-and-lists.md in the HERMES repository.",
       quiet: "Quiet hours: {from}–{to}. Reminders and timers you set yourself and calendar check-ins are still announced; other nudges stay silent.",
       test: "Test",
       testLine: "This is how reminders sound on this device.",
@@ -212,7 +212,7 @@
       notifyAsk: "Benachrichtigungen erlauben",
       notifyUnavailable: "Hier nicht verfügbar (braucht localhost oder HTTPS).",
       memorySaver:
-        "Chrome legt Hintergrund-Tabs eventuell schlafen und verpasst dann Erinnerungen. Füge localhost unter chrome://settings/performance zu ‚Diese Websites immer aktiv lassen‘ hinzu. Siehe „Reminders & timers“ in der README.",
+        "Chrome legt Hintergrund-Tabs eventuell schlafen und verpasst dann Erinnerungen. Füge localhost unter chrome://settings/performance zu ‚Diese Websites immer aktiv lassen‘ hinzu. Siehe docs/reminders-and-lists.md im HERMES-Repository.",
       quiet: "Ruhezeit: {from}–{to}. Erinnerungen und Timer, die du selbst stellst, und Termin-Hinweise werden trotzdem angesagt; andere Hinweise bleiben stumm.",
       test: "Testen",
       testLine: "So klingen Erinnerungen auf diesem Gerät.",
@@ -1654,7 +1654,7 @@
     if (qs !== qe) root.appendChild(el("p", { class: "hint rem-quiet", text: tr("quiet", { from: qs, to: qe }) }));
 
     // Chrome Memory Saver may discard the speaking tab
-    // the README section "Reminders & timers" repeats this hint (the README is not served, so no link)
+    // docs/reminders-and-lists.md ("Who announces them") repeats this hint (the docs are not served, so no link)
     var chrome = /Chrome\//.test(navigator.userAgent || "") && !/Edg\//.test(navigator.userAgent || "");
     if (on && chrome) root.appendChild(el("p", { class: "rem-note warn", text: tr("memorySaver") }));
 

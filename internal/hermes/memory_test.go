@@ -1375,7 +1375,6 @@ func memReq(t *testing.T, h http.Handler, method, path, body string) *httptest.R
 
 func TestMemoryAPICRUD(t *testing.T) {
 	memEnv(t)
-	t.Setenv("MISTRAL_API_KEY", "")
 	h := newMux()
 
 	rec := memReq(t, h, "POST", "/api/memories", `{"text":"  Die Katze heißt Mochi. ","person":"","kind":"home","pinned":true}`)

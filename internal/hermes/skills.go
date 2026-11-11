@@ -70,7 +70,7 @@ type Turn struct {
 	Now           time.Time      // nowFunc().In(Loc)
 	Query         string         // latest user message (sanitised)
 	History       []chatMessage  // user/assistant turns incl. Query as last, after the speaker filter
-	Tagged        []reqMessage   // same, with src/sp/att tags (router + Mistral allowlists read these)
+	Tagged        []reqMessage   // same, with src/sp/att tags (router context and realtime follow-ups read these)
 	Speaker       Speaker
 	ClientID      string
 	Spoken        bool
@@ -84,7 +84,7 @@ type Turn struct {
 
 	w            http.ResponseWriter
 	out          *sseStream
-	handledBy    string // "fast:<name>"|"tool:<name>"|"kb"|"mistral"|"image"|"persona"|"offer"|"local:*"|"notice"
+	handledBy    string // "fast:<name>"|"tool:<name>"|"kb"|"realtime:<kind>"|"image"|"persona"|"offer"|"local:*"|"notice"
 	toolName     string // tool behind a fast:/tool:/pending turn, for the {"tool"} event
 	personalUsed bool   // persona turn injected a personal context section
 	// replySuffix runs once in streamLocal, inside the final event before
@@ -137,7 +137,7 @@ func (t *Turn) Meta() map[string]any {
 	}
 	private := true
 	switch {
-	case src == "mistral" || src == "image" || src == "kb":
+	case src == "image" || src == "kb" || strings.HasPrefix(src, "realtime:"):
 		private = false
 	case src == "persona" && !t.personalUsed:
 		private = false
@@ -922,7 +922,7 @@ func runPendingAnswer(t *Turn) bool {
 		return false
 	}
 	// a resumed tool that tagged its turn "local:*" (docs, link) keeps that
-	// tag: it marks the reply as local-only for Mistral and memory
+	// tag: it marks the reply as local-only for memory extraction
 	if t.handledBy == before || !strings.HasPrefix(t.handledBy, "local:") {
 		t.handledBy = "fast:pending_answer"
 		if p.Tool != "" {

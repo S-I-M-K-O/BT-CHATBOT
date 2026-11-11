@@ -406,3 +406,58 @@ a.hc-link-body:hover .hc-link-title {
     transition: none;
   }
 }
+
+/* ---------------------------------------------------------------- weather (realtime) */
+
+.hc-wx-days,
+.hc-news {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.hc-wx-day {
+  display: grid;
+  grid-template-columns: minmax(64px, auto) auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  border-top: 1px solid var(--border);
+}
+.hc-wx-day:first-child {
+  border-top: 0;
+}
+.hc-wx-label {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 12px;
+}
+.hc-wx-range {
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+.hc-wx-cond {
+  color: var(--muted);
+  font-size: 12px;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------- news (realtime) */
+
+.hc-news-item {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  border-top: 1px solid var(--border);
+}
+.hc-news-item:first-child {
+  border-top: 0;
+}
+.hc-news-top {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+.hc-news-title {
+  min-width: 0;
+}

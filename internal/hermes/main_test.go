@@ -222,7 +222,7 @@ func TestListenAddr(t *testing.T) {
 	}
 }
 
-// README "directories 0700": data/gen was created 0755 (E2E finding), and an
+// docs/security.md "directories 0700": data/gen was created 0755 (E2E finding), and an
 // existing folder keeps being tightened.
 func TestEnsureGenDirIsPrivate(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "gen")

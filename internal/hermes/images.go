@@ -19,8 +19,8 @@ import (
 	"time"
 )
 
-// This file holds picture search (Openverse, no key needed), the cached
-// Mistral image agent and the size budget for the generated-images folder.
+// This file holds picture search (Openverse, no key needed) and the size
+// budget for the folder the found pictures are stored in.
 
 var openverseSearchURL = "https://api.openverse.org/v1/images/"
 
@@ -99,48 +99,40 @@ func handleImageSearchWith(w http.ResponseWriter, s *Settings, q string, getJSON
 	sse.done()
 }
 
-// imageAgent caches the Mistral agent used for image generation.
-var imageAgent struct {
-	sync.Mutex
-	id string
+// genDir is where searched pictures are stored and served from (/gen/).
+func genDir() string { return envOr("GEN_DIR", filepath.Join("data", "gen")) }
+
+// imageExt maps a sniffed content type to a file extension, or "" when the
+// data is not an image format we serve from /gen/.
+func imageExt(data []byte) string {
+	switch http.DetectContentType(data) {
+	case "image/jpeg":
+		return ".jpg"
+	case "image/png":
+		return ".png"
+	case "image/gif":
+		return ".gif"
+	case "image/webp":
+		return ".webp"
+	}
+	return ""
 }
 
-func ensureImageAgent(ctx context.Context) (string, error) {
-	imageAgent.Lock()
-	defer imageAgent.Unlock()
-	if imageAgent.id != "" {
-		return imageAgent.id, nil
+// imageJobs limits concurrent picture searches (network, memory and disk
+// heavy). Further requests wait until a slot frees or their client goes
+// away.
+var imageJobs = make(chan struct{}, 2)
+
+func acquireImageJob(ctx context.Context) bool {
+	select {
+	case imageJobs <- struct{}{}:
+		return true
+	case <-ctx.Done():
+		return false
 	}
-	var agent struct {
-		ID string `json:"id"`
-	}
-	err := mistralPost(ctx, "/v1/agents", map[string]any{
-		"model":        mistralModel(),
-		"name":         "HERMES Image Generator",
-		"description":  "Generates images for the HERMES voice assistant.",
-		"instructions": "You generate images on demand. Use the image_generation tool whenever the user asks to see an image or picture. Keep any spoken reply to one short sentence.",
-		"tools":        []any{map[string]any{"type": "image_generation"}},
-	}, &agent)
-	if err != nil {
-		return "", err
-	}
-	if agent.ID == "" {
-		return "", fmt.Errorf("empty agent id from Mistral")
-	}
-	imageAgent.id = agent.ID
-	log.Printf("created Mistral image agent %s", agent.ID)
-	return agent.ID, nil
 }
 
-// forgetImageAgent drops the cached agent if it is still id, so the next
-// request creates a fresh one.
-func forgetImageAgent(id string) {
-	imageAgent.Lock()
-	defer imageAgent.Unlock()
-	if imageAgent.id == id {
-		imageAgent.id = ""
-	}
-}
+func releaseImageJob() { <-imageJobs }
 
 // genBudgetFiles and genBudgetBytes cap what stays in GEN_DIR; the oldest
 // pictures are deleted so the folder cannot grow without bound. Both are
@@ -152,7 +144,7 @@ const (
 
 var genBudgetMu sync.Mutex
 
-// enforceGenBudget removes the oldest generated/searched images until at most
+// enforceGenBudget removes the oldest searched images until at most
 // genBudgetFiles remain and they total at most genBudgetBytes.
 func enforceGenBudget() {
 	enforceGenBudgetIn(genDir(), genBudgetFiles, genBudgetBytes)

@@ -14,7 +14,6 @@ func TestReadEndpointsNeverLeakSecrets(t *testing.T) {
 		t.Run(voice, func(t *testing.T) {
 			h := integEnv(t)
 			t.Setenv("OLLAMA_BASE", "http://127.0.0.1:1") // nothing listens: fast failure
-			t.Setenv("MISTRAL_API_KEY", "")
 			s := loadSettings()
 			s.PiperVoice = voice
 			if err := saveSettings(s); err != nil {

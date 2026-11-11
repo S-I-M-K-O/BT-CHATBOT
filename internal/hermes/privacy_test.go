@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"math"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -26,12 +27,17 @@ func testVoiceB64(seed float64) string {
 }
 
 // privacyEnv: one enrolled person (Anna, recognised by voice), a memory
-// context provider, a fake Mistral and a fake Ollama.
-func privacyEnv(t *testing.T) (*fakeMistral, *routerFake) {
+// context provider, fake realtime services (Open-Meteo, Tagesschau, Google
+// News) and a fake Ollama.
+func privacyEnv(t *testing.T) (*fakeRealtime, *routerFake) {
 	t.Helper()
 	f := routerEnv(t)
-	fm := newFakeMistral(t)
-	fm.script("/v1/chat/completions", fakeResp{200, `{"choices":[{"message":{"role":"assistant","content":"Sunny, 20 degrees."}}]}`})
+	rt := newFakeRealtime(t)
+	s := loadSettings()
+	s.HomeCity = "Berlin"
+	if err := saveSettings(s); err != nil {
+		t.Fatal(err)
+	}
 	peopleCountProvider = func() int { return 1 }
 	personNameProvider = func(id string) (string, bool) { return "Anna", id == "p_anna" }
 	personExistsProvider = func(id string) bool { return id == "p_anna" }
@@ -48,7 +54,7 @@ func privacyEnv(t *testing.T) (*fakeMistral, *routerFake) {
 		return contextBlock(t.Lang, "Memory about Anna", "Gedächtnis über Anna",
 			[]string{"Anna mag keinen Koriander.", "Annas Hund heißt Bello."})
 	})
-	return fm, f
+	return rt, f
 }
 
 // privateHistory is the history of Section 8.1: every assistant reply was
@@ -85,68 +91,134 @@ func chatWithVoice(clientID string, msgs []map[string]any) string {
 	return string(b)
 }
 
-func TestMistralNeverSeesPrivateHistory(t *testing.T) {
-	fm, _ := privacyEnv(t)
-	q := "What's the weather in Berlin tomorrow?"
-	if !wantsRealtime(q) {
-		t.Fatal("test query must route to Mistral")
-	}
-	history := append(privateHistory(), msg("user", q, "", "", false))
-	body := postChat(t, newMux(), chatWithVoice(testClient, history)).Body.String()
-	evs := rawEvents(t, body)
-	if m := hasEvent(evs, "meta"); m["src"] != "mistral" || m["private"] != false || m["sp"] != "p_anna" {
-		t.Fatalf("meta = %v (%s)", m, body)
-	}
-	bodies := fm.bodies["/v1/chat/completions"]
-	if len(bodies) == 0 {
-		t.Fatal("Mistral was not called")
-	}
-	for _, b := range bodies {
-		for _, bad := range []string{"Koriander", "Bello", "Zahnarzt", "4711", "example.com", "Anna", "p_", testVoiceB64(1)[:40], "<<<"} {
-			if strings.Contains(b, bad) {
-				t.Errorf("Mistral body contains %q: %s", bad, b)
+// privateMarkers must never appear in anything that leaves the machine.
+func privateMarkers() []string {
+	return []string{"Koriander", "Bello", "Zahnarzt", "4711", "example.com", "Anna", "anna", "p_",
+		"Kundennummer", "Notizen", testVoiceB64(1)[:40], "<<<", "_single"}
+}
+
+// allowedParams is everything a realtime request may carry, per service.
+var allowedParams = map[string]map[string]bool{
+	"/geo":        wordSet("name", "count", "language", "format"),
+	"/forecast":   wordSet("latitude", "longitude", "current", "daily", "timezone", "forecast_days"),
+	"/rss":        wordSet("hl", "gl", "ceid"),
+	"/rss/search": wordSet("q", "hl", "gl", "ceid"),
+	"/tagesschau": wordSet(),
+}
+
+// checkOutbound asserts that every request the fake services received
+// carries only allowed parameters and no personal data, and returns them.
+func checkOutbound(t *testing.T, rt *fakeRealtime) []*url.URL {
+	t.Helper()
+	reqs := rt.requests()
+	for _, u := range reqs {
+		allowed, known := allowedParams[u.Path]
+		if !known {
+			t.Errorf("request to an unexpected path %s", u)
+			continue
+		}
+		for k := range u.Query() {
+			if !allowed[k] {
+				t.Errorf("unexpected parameter %q in %s", k, u)
+			}
+		}
+		raw, _ := url.QueryUnescape(u.String())
+		for _, bad := range privateMarkers() {
+			if strings.Contains(raw, bad) {
+				t.Errorf("outbound request contains %q: %s", bad, raw)
 			}
 		}
 	}
-	var sent struct {
-		Messages []map[string]any `json:"messages"`
-	}
-	json.Unmarshal([]byte(bodies[0]), &sent)
-	if n := len(sent.Messages); n != 2 || sent.Messages[0]["role"] != "system" || sent.Messages[1]["content"] != q {
-		t.Errorf("Mistral messages = %v", sent.Messages)
+	return reqs
+}
+
+// The realtime path sends only the city (or the news topic) out, whatever
+// private history the browser sends along, and no model is called at all.
+func TestRealtimeNeverSendsPrivateData(t *testing.T) {
+	for _, c := range []struct {
+		voice, q  string
+		path, key string
+		want, src string
+	}{
+		{"BT7274", "What's the weather in Hamburg tomorrow?", "/geo", "name", "Hamburg", "realtime:weather"},
+		{"BT7274", "What's the weather tomorrow?", "/geo", "name", "Berlin", "realtime:weather"},
+		{"JarvisDE", "Wie spät ist es in Tokio?", "/geo", "name", "Tokio", "realtime:time"},
+		{"JarvisDE", "Nachrichten über Fußball", "/rss/search", "q", "Fußball", "realtime:news"},
+		{"JarvisDE", "Was gibt es Neues?", "/tagesschau", "", "", "realtime:news"},
+		{"BT7274", "What's in the news?", "/rss", "hl", "en-US", "realtime:news"},
+	} {
+		t.Run(c.q, func(t *testing.T) {
+			rt, f := privacyEnv(t)
+			setVoice(t, c.voice)
+			if !wantsRealtime(c.q) {
+				t.Fatal("test query must be a realtime question")
+			}
+			history := append(privateHistory(), msg("user", c.q, "", "", false))
+			body := postChat(t, newMux(), chatWithVoice(testClient, history)).Body.String()
+			evs := rawEvents(t, body)
+			if m := hasEvent(evs, "meta"); m["src"] != c.src || m["private"] != false || m["sp"] != "p_anna" {
+				t.Fatalf("meta = %v (%s)", m, body)
+			}
+			if r, p := f.counts(); r != 0 || p != 0 {
+				t.Errorf("a realtime turn called a model: router %d, persona %d", r, p)
+			}
+			reqs := checkOutbound(t, rt)
+			if len(reqs) == 0 {
+				t.Fatal("no service was asked")
+			}
+			found := false
+			for _, u := range reqs {
+				if u.Path == c.path && (c.key == "" || u.Query().Get(c.key) == c.want) {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("no %s request with %s=%q in %v", c.path, c.key, c.want, reqs)
+			}
+		})
 	}
 }
 
-func TestMistralKeepsPreviousMistralExchange(t *testing.T) {
-	fm, _ := privacyEnv(t)
+// A follow-up ("And in Paris?") carries only the new place: the previous
+// question and answer are not sent anywhere, and another speaker's realtime
+// exchange is no basis for a follow-up.
+func TestRealtimeFollowUpSendsOnlyThePlace(t *testing.T) {
+	rt, f := privacyEnv(t)
 	sp := "p_anna"
+	first := msg("user", "What's the weather in Hamburg?", "", "", false)
+	postChat(t, newMux(), chatWithVoice(testClient, append(privateHistory(), first)))
 	history := append(privateHistory(),
-		msg("user", "What's the weather in Berlin today?", "mistral", sp, false),
-		msg("assistant", "Cloudy, 12 degrees.", "mistral", sp, false),
-		msg("user", "And tomorrow? What's the weather forecast", "", "", false))
-	postChat(t, newMux(), chatWithVoice(testClient, history))
-	bodies := fm.bodies["/v1/chat/completions"]
-	if len(bodies) == 0 {
-		t.Fatal("Mistral was not called")
+		msg("user", "What's the weather in Hamburg?", "realtime:weather", sp, false),
+		msg("assistant", "In Hamburg it is 6 degrees, overcast.", "realtime:weather", sp, false),
+		msg("user", "And in Paris?", "", "", false))
+	body := postChat(t, newMux(), chatWithVoice(testClient, history)).Body.String()
+	if !strings.Contains(sseText(t, body), "In Paris it is 6 degrees") {
+		t.Fatalf("follow-up answer: %s", body)
 	}
-	if !strings.Contains(bodies[0], "Berlin today") || !strings.Contains(bodies[0], "Cloudy, 12 degrees") {
-		t.Errorf("the previous Mistral exchange is missing: %s", bodies[0])
+	reqs := checkOutbound(t, rt)
+	for _, u := range reqs {
+		if u.Path == "/geo" && u.Query().Get("name") != "Hamburg" && u.Query().Get("name") != "Paris" {
+			t.Errorf("geocoded %q", u.Query().Get("name"))
+		}
 	}
-	if strings.Contains(bodies[0], "Bello") || strings.Contains(bodies[0], "Koriander") {
-		t.Errorf("private history leaked: %s", bodies[0])
+	if r, p := f.counts(); r != 0 || p != 0 {
+		t.Errorf("model called: router %d, persona %d", r, p)
 	}
 
-	// The same exchange from another speaker is dropped.
+	// The same exchange from another speaker is not Anna's to follow up.
 	history[len(history)-3]["sp"], history[len(history)-2]["sp"] = "p_ben", "p_ben"
-	postChat(t, newMux(), chatWithVoice(testClient, history))
-	bodies = fm.bodies["/v1/chat/completions"]
-	if last := bodies[len(bodies)-1]; strings.Contains(last, "Cloudy") {
-		t.Errorf("another speaker's exchange reached Mistral: %s", last)
+	n := len(rt.requests())
+	body = postChat(t, newMux(), chatWithVoice(testClient, history)).Body.String()
+	if m := hasEvent(rawEvents(t, body), "meta"); m["src"] == "realtime:weather" {
+		t.Errorf("followed up on another speaker's exchange: %s", body)
+	}
+	if len(rt.requests()) != n {
+		t.Errorf("another speaker's follow-up reached a service")
 	}
 }
 
 func TestPersonalContextOnlyInOllamaInsideDelimiters(t *testing.T) {
-	fm, f := privacyEnv(t)
+	rt, f := privacyEnv(t)
 	// Two plain persona exchanges after the link/docs replies, so the
 	// personal context is allowed (recentUntrustedReply).
 	history := append(privateHistory(),
@@ -154,8 +226,8 @@ func TestPersonalContextOnlyInOllamaInsideDelimiters(t *testing.T) {
 		msg("assistant", "Gut, danke.", "persona", "p_anna", false),
 		msg("user", "Erzähl mir was Schönes", "", "", false))
 	body := postChat(t, newMux(), chatWithVoice(testClient, history)).Body.String()
-	if len(fm.bodies["/v1/chat/completions"]) != 0 {
-		t.Fatal("a persona turn reached Mistral")
+	if n := len(rt.requests()); n != 0 {
+		t.Fatalf("a persona turn reached %d outside services", n)
 	}
 	if m := hasEvent(rawEvents(t, body), "meta"); m["src"] != "persona" || m["private"] != true {
 		t.Errorf("meta = %v", m)

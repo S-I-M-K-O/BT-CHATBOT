@@ -11,8 +11,8 @@ import (
 // The personal context (Section 4.7) is a system-prompt block for the local
 // persona model: the current time, who is speaking, the registered data
 // sections (memories, reminders, calendar) and an honesty rule. It is only
-// ever placed in requests to ollamaBase(), never into messages that could
-// reach Mistral.
+// ever placed in requests to ollamaBase(), never into anything that leaves
+// the machine.
 //
 // Providers register with registerContext(order, name, fn). A provider
 // returns "" when it has nothing for this turn, and MUST itself check

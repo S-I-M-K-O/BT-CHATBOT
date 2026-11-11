@@ -703,7 +703,7 @@
   /*
    * Markdown -> plain text (for speech captions and clipboard-free uses).
    * Only markup is removed: "5*3" becomes "5 × 3" (not "53"), and "_" / "#"
-   * inside words survive (MISTRAL_API_KEY, snake_case, C#).
+   * inside words survive (OLLAMA_BASE, snake_case, C#).
    */
   function stripMarkdown(s) {
     return String(s || "")
@@ -1264,7 +1264,7 @@
    * or null for an unknown kind, non-object data or oversize data. The text
    * of private reminders is never stored (the card hides it anyway).
    */
-  var CARD_KINDS = ["briefing", "calendar", "home", "reminder", "timer", "list", "docs", "link", "memory"];
+  var CARD_KINDS = ["briefing", "calendar", "home", "reminder", "timer", "list", "docs", "link", "memory", "weather", "news"];
   var CARDS_PER_MESSAGE = 4;
   var CARD_DATA_MAX = 16000; // bytes of JSON per card
 

@@ -32,9 +32,9 @@ type sseStream struct {
 	beforeDone func() any
 }
 
-// turnWriter is the ResponseWriter handed to the older chat handlers
-// (Mistral, image search) that build their own stream with newSSE(w): they
-// get the turn's stream instead, so the headers go out once and the meta
+// turnWriter is the ResponseWriter handed to the older image search
+// handler that builds its own stream with newSSE(w): it gets the turn's
+// stream instead, so the headers go out once and the meta
 // event still precedes their "done".
 type turnWriter struct {
 	http.ResponseWriter

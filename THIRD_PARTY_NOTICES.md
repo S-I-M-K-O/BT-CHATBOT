@@ -1,6 +1,6 @@
 # Third-party notices
 
-HERMES itself contains no third-party code in this repository. The browser
+HERMES itself contains no third-party code in this repository. It uses a few free online data services at run time (listed under *Online data services* below). The browser
 assets below are **not committed**; `sh scripts/fetch-assets.sh` (and the
 `assets` stage of the Dockerfile) downloads them into `web/static/vendor/` and
 checks each file against a pinned sha256. They are served unchanged from
@@ -24,6 +24,17 @@ The speaker front end in `web/static/voiceid-core.js` (log-mel filterbank with
 Kaldi conventions) is an independent implementation written for HERMES; it
 follows the published behaviour of kaldi-native-fbank (Apache-2.0,
 https://github.com/csukuangfj/kaldi-native-fbank) but contains no code from it.
+
+## Online data services
+
+HERMES ships no code from these services; it calls their public APIs at run time (see [Live info](docs/live-info.md)). No API key is used.
+
+| Service | Used for | Terms |
+| --- | --- | --- |
+| [Open-Meteo](https://open-meteo.com) | Weather forecasts and place names / time zones (geocoding) | Free for non-commercial use; data under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), "Weather data by Open-Meteo.com" |
+| [Tagesschau API](https://tagesschau.api.bund.dev/) (ARD) | German top headlines | Headlines are © ARD / tagesschau.de; for private use |
+| [Google News RSS](https://news.google.com/rss) | English headlines and news topics | Headlines belong to their publishers; Google's terms apply |
+| [Openverse](https://openverse.org) | Image search | Each picture keeps its own license (Creative Commons or public domain), shown by Openverse |
 
 ## Apache License 2.0
 

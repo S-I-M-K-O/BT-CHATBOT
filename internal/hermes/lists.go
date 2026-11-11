@@ -25,7 +25,7 @@ import (
 // event stream) use to refresh. Voice commands go through deterministic fast
 // paths (order 50) and three router tools; lists are household data, so
 // they are open to every speaker (Section 4.10), including guests. Nothing
-// here ever reaches Mistral: replies are templates, and list texts are only
+// here ever leaves the machine: replies are templates, and list texts are only
 // spoken back or shown.
 
 const (

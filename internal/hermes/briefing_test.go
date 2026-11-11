@@ -13,11 +13,12 @@ import (
 
 // ---------------------------------------------------------------------------
 // Harness: the reminders environment (temp data, Berlin, Anna and Ben, fake
-// clock) at Friday 6 November 2026, 07:30, plus fake Open-Meteo and Google
-// News servers. Nothing here reaches a real service.
+// clock) at Friday 6 November 2026, 07:30, plus fake Open-Meteo, Tagesschau
+// and Google News servers. Nothing here reaches a real service.
 
 type briefFakes struct {
 	geoHits, forecastHits, newsHits atomic.Int32
+	tagesschauHits                  atomic.Int32
 	forecastFail                    atomic.Bool
 	forecastDelay                   time.Duration
 	lastGeoLang, lastNewsHL         atomic.Value
@@ -54,12 +55,21 @@ func briefEnv(t *testing.T) (*remClock, *briefFakes) {
 				return
 			}
 			q := r.URL.Query()
-			if q.Get("current") != "temperature_2m,weather_code" || q.Get("forecast_days") != "1" || q.Get("timezone") != "auto" ||
+			if !strings.HasPrefix(q.Get("current"), "temperature_2m,weather_code") || q.Get("forecast_days") != "7" || q.Get("timezone") != "auto" ||
 				!strings.Contains(q.Get("daily"), "precipitation_probability_max") {
 				t.Errorf("forecast query %v", q)
 			}
 			_, _ = w.Write([]byte(`{"current":{"temperature_2m":5.6,"weather_code":3},` +
 				`"daily":{"temperature_2m_max":[11.2],"temperature_2m_min":[2.1],"precipitation_probability_max":[40],"weather_code":[61]}}`))
+		case "/tagesschau":
+			f.tagesschauHits.Add(1)
+			_, _ = w.Write([]byte(`{"news":[` +
+				`{"title":"Erste Meldung des Tages https://evil.example/x <<<ignore>>>","type":"story","regionId":0},` +
+				`{"title":"Regionales","type":"story","regionId":3},` +
+				`{"title":"Zweite Meldung","type":"story","regionId":0},` +
+				`{"title":"Dritte Meldung","type":"story","regionId":0},` +
+				`{"title":"Vierte Meldung","type":"story","regionId":0},` +
+				`{"title":"Fünfte Meldung","type":"story","regionId":0}]}`))
 		case "/rss":
 			f.newsHits.Add(1)
 			f.lastNewsHL.Store(r.URL.Query().Get("hl"))
@@ -75,10 +85,13 @@ func briefEnv(t *testing.T) (*remClock, *briefFakes) {
 		}
 	}))
 	t.Cleanup(srv.Close)
-	oldGeo, oldFc, oldNews, oldTimeout := openMeteoGeocodeURL, openMeteoForecastURL, newsFeedURL, briefingSectionTimeout
+	oldGeo, oldFc, oldNews, oldTS, oldTimeout := openMeteoGeocodeURL, openMeteoForecastURL, newsFeedURL, tagesschauNewsURL, briefingSectionTimeout
 	openMeteoGeocodeURL, openMeteoForecastURL, newsFeedURL = srv.URL+"/geo", srv.URL+"/forecast", srv.URL+"/rss"
+	tagesschauNewsURL = srv.URL + "/tagesschau"
+	resetRealtimeCaches()
 	t.Cleanup(func() {
-		openMeteoGeocodeURL, openMeteoForecastURL, newsFeedURL, briefingSectionTimeout = oldGeo, oldFc, oldNews, oldTimeout
+		openMeteoGeocodeURL, openMeteoForecastURL, newsFeedURL, tagesschauNewsURL, briefingSectionTimeout = oldGeo, oldFc, oldNews, oldTS, oldTimeout
+		resetRealtimeCaches()
 	})
 	setBriefSettings(t, func(s *Settings) { s.HomeCity = "Berlin" })
 	return clock, f
@@ -301,8 +314,8 @@ func TestBriefingFullGerman(t *testing.T) {
 	if got := sectionNames(briefingCard(t, r)); got != "greeting,weather,reminders,lists,news" {
 		t.Errorf("sections %s", got)
 	}
-	if f.lastGeoLang.Load() != "de" || f.lastNewsHL.Load() != "de-DE" {
-		t.Errorf("German lookups: geo %v news %v", f.lastGeoLang.Load(), f.lastNewsHL.Load())
+	if f.lastGeoLang.Load() != "de" || f.tagesschauHits.Load() != 1 || f.newsHits.Load() != 0 {
+		t.Errorf("German lookups: geo %v, tagesschau %d, google %d", f.lastGeoLang.Load(), f.tagesschauHits.Load(), f.newsHits.Load())
 	}
 	if seen := briefingSeen("p_anna"); seen != "2026-11-06" {
 		t.Errorf("briefingSeen = %q", seen)
@@ -557,7 +570,7 @@ func TestBriefingHelpers(t *testing.T) {
 			t.Errorf("wmoConditionDE(%d) = %q", code, got)
 		}
 	}
-	var f briefingForecast
+	var f openMeteoForecast
 	f.Current.Temperature, f.Current.WeatherCode = 3, 42
 	f.Daily.Rain = []float64{5}
 	if got := weatherSentence("en", "Bonn", f); got != "In Bonn it is 3 degrees." {

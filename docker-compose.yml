@@ -49,12 +49,10 @@ services:
       - HERMES_BLOCK_CIDRS=${HERMES_BLOCK_CIDRS:-}
       # Linux: a stock Ollama listens on 127.0.0.1 only, which the container
       # cannot reach. Make it listen on the docker bridge (OLLAMA_HOST, see
-      # README) or point DOCKER_OLLAMA_BASE elsewhere. A separate name from
+      # docs/setup.md) or point DOCKER_OLLAMA_BASE elsewhere. A separate name from
       # OLLAMA_BASE so a localhost value in .env meant for `go run` does not
       # leak into the container, where localhost is the container itself.
       - OLLAMA_BASE=${DOCKER_OLLAMA_BASE:-http://host.docker.internal:11434}
-      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
-      - MISTRAL_MODEL=${MISTRAL_MODEL:-mistral-medium-latest}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
