@@ -3,7 +3,7 @@
         "key": "BT7274",
         "name": "piper",
         "language": {
-            "code": "en",
+            "code": "en_US",
             "family": "en",
             "region": "US",
             "name_native": "English",
@@ -14,17 +14,65 @@
         "num_speakers": 1,
         "speaker_id_map": {},
         "files": {
-            "bt7274.onnx": {
+            "BT7274/BT7274.onnx": {
                 "size_bytes": 63122309,
                 "md5_digest": "a5ca3398ea523802af9d4634392ccdae"
             },
-            "en/en_US/hfc_male/medium/en_US-hfc_male-medium.onnx.json": {
-                "size_bytes": 5033,
-                "md5_digest": "39873d026dfe3392e64662e33ee331eb"
+            "BT7274/BT7274.onnx.json": {
+                "size_bytes": 7095,
+                "md5_digest": "65f4862761d7c1dc02721d7089604e80"
+            }
+        },
+        "aliases": []
+    },
+    "ScorchAI": {
+        "key": "ScorchAI",
+        "name": "piper",
+        "language": {
+            "code": "en_US",
+            "family": "en",
+            "region": "US",
+            "name_native": "English",
+            "name_english": "English",
+            "country_english": "United States"
+        },
+        "quality": "ScorchTrainingL1",
+        "num_speakers": 1,
+        "speaker_id_map": {},
+        "files": {
+            "ScorchAI/ScorchAI.onnx": {
+                "size_bytes": 63516050,
+                "md5_digest": "384eb690b22f02a3533a3906da1848aa"
             },
-            "en/en_US/hfc_male/medium/MODEL_CARD": {
-                "size_bytes": 352,
-                "md5_digest": "0bc174f6fe7a6d795a790110e8bf9096"
+            "ScorchAI/ScorchAI.onnx.json": {
+                "size_bytes": 7096,
+                "md5_digest": "d6f5f4ec78ae4a9a177163881cf6a264"
+            }
+        },
+        "aliases": []
+    },
+    "PDA": {
+        "key": "PDA",
+        "name": "piper",
+        "language": {
+            "code": "en_US",
+            "family": "en",
+            "region": "US",
+            "name_native": "English",
+            "name_english": "English",
+            "country_english": "United States"
+        },
+        "quality": "medium",
+        "num_speakers": 1,
+        "speaker_id_map": {},
+        "files": {
+            "PDA/PDA.onnx": {
+                "size_bytes": 63516050,
+                "md5_digest": "8d25f75d7f7c3663ce38ac633579bb96"
+            },
+            "PDA/PDA.onnx.json": {
+                "size_bytes": 4858,
+                "md5_digest": "c8184203830e488ca48140af6418cac5"
             }
         },
         "aliases": []
@@ -44,11 +92,13 @@
         "num_speakers": 1,
         "speaker_id_map": {},
         "files": {
-            "jarvisde.onnx": {
-                "size_bytes": 63122309
+            "JarvisDE/JarvisDE.onnx": {
+                "size_bytes": 63122309,
+                "md5_digest": "d6e2acaee465a79cccb50e41fe16efc9"
             },
-            "jarvisde.onnx.json": {
-                "size_bytes": 7652
+            "JarvisDE/JarvisDE.onnx.json": {
+                "size_bytes": 7652,
+                "md5_digest": "6b2fa3774130d31c81dae3ebae762a23"
             }
         },
         "aliases": []

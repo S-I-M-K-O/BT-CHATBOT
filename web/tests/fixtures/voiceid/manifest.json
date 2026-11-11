@@ -1,0 +1,12 @@
+{
+  "source": "design/speaker/refdump_v2 (kaldi-native-fbank via sherpa-onnx Python reference, CAM++ zh_en front end)",
+  "clip": "de-Anna_7",
+  "audio": "de-Anna_7.s16",
+  "audioFormat": "16 kHz mono PCM s16le, samples / 32768",
+  "samples": 7382,
+  "frames": 46,
+  "dim": 80,
+  "rawfbank": "de-Anna_7.rawfbank.f32",
+  "feats": "de-Anna_7.feats.f32",
+  "tolerance": 0.002
+}

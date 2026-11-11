@@ -1,0 +1,228 @@
+/* =====================================================================
+   HERMES integrations settings (W2-N): Settings → Kalender / Calendar,
+   Privatsphäre / Privacy, Smart Home and Check-ins (static/integrations.js).
+   Uses the tokens from style.css (:root). Prefix: .int-*.
+   ===================================================================== */
+
+/* style.css styles text/number inputs only; the PIN, secret and time
+   inputs of these sections look the same */
+.int input[type="password"],
+.int input[type="time"] {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 14px;
+  transition: border-color var(--t-fast) var(--ease);
+}
+.int input[type="time"] {
+  color-scheme: dark;
+  font-family: var(--mono);
+}
+.int input[type="password"] {
+  letter-spacing: 0.12em;
+}
+.int input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+.int input:disabled,
+.int select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------- status lines */
+
+.int-status {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.int-status[data-state]::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--faint);
+  vertical-align: 1px;
+}
+.int-status[data-state="connected"]::before {
+  background: var(--ok);
+}
+.int-status[data-state="relink"]::before,
+.int-status[data-state="error"]::before,
+.int-status[data-state="no_client"]::before {
+  background: var(--warn);
+}
+.int-label {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.int-cred {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+/* ---------------------------------------------------------------- actions and messages */
+
+.int-actions {
+  position: relative; /* anchors the hidden file input */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.int-actions button.danger,
+.int-inline button.danger {
+  color: var(--danger);
+}
+.int-actions button.danger:hover {
+  border-color: var(--danger);
+}
+.int-file {
+  /* opened by the visible button; keeps the native picker accessible */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.int-msg {
+  margin: -4px 0 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.int-msg.warn {
+  color: var(--warn);
+}
+.int-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0 0 12px;
+}
+.int-inline .int-status {
+  margin: 0;
+  flex: 1 1 220px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.int-inline .int-status[hidden],
+.int-inline button[hidden] {
+  display: none;
+}
+
+.int-pin {
+  margin: 0;
+}
+.int-pin label[hidden] {
+  display: none;
+}
+
+/* ---------------------------------------------------------------- smart home */
+
+.int-ha {
+  margin: 0;
+}
+.int-ha input[type="text"] {
+  font-family: var(--mono);
+}
+.int-details {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.int-details[hidden] {
+  display: none;
+}
+.int-details summary {
+  cursor: pointer;
+  color: var(--text);
+  padding: 2px 0;
+}
+.int-details summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.int-setup ol {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  line-height: 1.5;
+}
+.int-setup li + li {
+  margin-top: 4px;
+}
+.int-entities {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.int-entities li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 6px 10px;
+  overflow-wrap: anywhere;
+}
+.int-entities li + li {
+  border-top: 1px solid var(--border);
+}
+.int-ent-name {
+  color: var(--text);
+}
+.int-ent-meta {
+  font-size: 12px;
+  color: var(--faint);
+}
+.int-ent-flag {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--warn);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.int-entities li.blocked .int-ent-name {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+/* ---------------------------------------------------------------- phones */
+
+@media (max-width: 640px) {
+  .int .row {
+    flex-direction: column;
+    gap: 0;
+  }
+  .int-actions button,
+  .int-inline button {
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .int input[type="password"],
+  .int input[type="time"] {
+    transition: none;
+  }
+}

@@ -1,4 +1,13 @@
 .env
-data/gen
+.env.*
+!.env.example
+# Runtime data: settings, people + voiceprints, memories, reminders, lists,
+# documents, tokens. Personal — never commit.
+data/
+backups/
 settings.json
 bt-chatbot
+bin/
+
+# Downloaded by scripts/fetch-assets.sh (sha256-pinned, ~42 MB); never committed
+web/static/vendor/

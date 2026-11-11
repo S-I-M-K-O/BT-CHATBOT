@@ -1,0 +1,23 @@
+# LAN layout: HERMES on every interface, protected by tokens.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.lan.yml up -d --build
+#
+# Needs Docker Compose 2.24+ (for !override). Set HERMES_TOKEN in .env first
+# (openssl rand -hex 32); Compose refuses to start without it.
+# - Every device opens http://<host>:8080/?token=<HERMES_TOKEN> once.
+# - On this machine open http://localhost:8080/?token=<HERMES_TOKEN> once:
+#   admin actions (calendar connect, integrations, PIN) need a localhost
+#   address plus the master token in this layout.
+# - Phones that only need the shopping list get the scoped
+#   HERMES_LISTS_TOKEN: http://<host>:8080/lists.html?token=<lists token>.
+#   Never hand out the master token for that.
+services:
+  bt-chatbot:
+    ports: !override
+      - "8080:8080"
+    environment:
+      - HERMES_BEHIND_LOOPBACK=0
+      - HERMES_TOKEN=${HERMES_TOKEN:?set HERMES_TOKEN in .env for the LAN layout}
+      - HERMES_LISTS_TOKEN=${HERMES_LISTS_TOKEN:-}
+      # Hostnames you use besides IP addresses, e.g. hermes.lan,mac.local
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-}

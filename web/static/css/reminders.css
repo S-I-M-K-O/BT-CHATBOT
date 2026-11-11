@@ -1,0 +1,216 @@
+/* =====================================================================
+   HERMES reminders UI (W2-N): hub tab "Erinnerungen" / "Reminders" and
+   the Settings → "Erinnerungen auf diesem Gerät" section. Uses the tokens
+   from style.css (:root). Prefix: .rem-*.
+   ===================================================================== */
+
+.rem {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* ---------------------------------------------------------------- add form */
+
+.rem-form {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.rem-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.rem-field input,
+.rem-field select {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 9px;
+  min-width: 0;
+  transition: border-color var(--t-fast) var(--ease);
+}
+.rem-field select {
+  cursor: pointer;
+}
+.rem-field input:focus,
+.rem-field select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+.rem-form button[type="submit"] {
+  min-height: 34px;
+}
+.rem-form-msg {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--warn);
+  line-height: 1.4;
+}
+
+/* ---------------------------------------------------------------- list */
+
+.rem-group {
+  margin: 14px 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rem-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rem-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--panel2);
+}
+.rem-item.fired {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+}
+.rem-item.private .rem-text {
+  font-style: italic;
+}
+.rem-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.rem-text {
+  font-size: 14px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.rem-rule {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.rem-meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.rem-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.rem-actions button.small {
+  padding: 5px 9px;
+  font-size: 12px;
+}
+.rem-actions button.danger {
+  color: var(--danger);
+}
+.rem-actions button.danger:hover {
+  border-color: var(--danger);
+}
+
+.rem-empty {
+  margin: 18px 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.rem-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin: 0 0 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-hi);
+  background: var(--panel2);
+  color: var(--muted);
+  line-height: 1.45;
+}
+.rem-note.warn {
+  border-left: 3px solid var(--warn);
+}
+
+/* ---------------------------------------------------------------- settings section */
+
+.rem-settings .rem-status {
+  margin: 4px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.rem-notify {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 6px;
+}
+.rem-label {
+  font-size: 13px;
+  color: var(--text);
+}
+.rem-ok {
+  color: var(--ok);
+  font-size: 13px;
+}
+.rem-settings .rem-note {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
+}
+.rem-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ---------------------------------------------------------------- phones */
+
+@media (max-width: 640px) {
+  .rem-form {
+    grid-template-columns: 1fr;
+  }
+  .rem-form button[type="submit"] {
+    justify-self: start;
+    min-height: 40px;
+  }
+  .rem-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rem-actions {
+    justify-content: flex-start;
+  }
+  .rem-actions button.small {
+    min-height: 36px;
+    padding: 7px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rem-field input,
+  .rem-field select {
+    transition: none;
+  }
+}

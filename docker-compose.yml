@@ -3,14 +3,56 @@ services:
     build: .
     container_name: bt-chatbot
     restart: unless-stopped
+    # Run as your host user so files in ./data stay yours. The image's own user
+    # is uid 1000; if yours differs, set HERMES_UID / HERMES_GID in .env or run
+    #   HERMES_UID=$(id -u) HERMES_GID=$(id -g) docker compose up -d
+    # (not UID/GID: bash's UID is read-only and never reaches Compose). Create
+    # ./data first (`mkdir -p data`), otherwise Docker creates it as root and
+    # HERMES cannot write settings or images.
+    user: "${HERMES_UID:-1000}:${HERMES_GID:-1000}"
+    # Least privilege: no capabilities, no setuid escalation, read-only root
+    # filesystem. HERMES writes only to /app/data and Piper's temp WAVs to /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     ports:
-      # Bound to loopback: the API has no auth. Use "8080:8080" (and ALLOWED_HOSTS)
-      # only if you deliberately want HERMES reachable from your LAN.
+      # Bound to loopback, which is why HERMES_BEHIND_LOOPBACK=1 below lets
+      # localhost in without a token. To reach HERMES from your LAN, do not
+      # edit this: start with the LAN override instead,
+      #   docker compose -f docker-compose.yml -f docker-compose.lan.yml up -d
+      # HERMES refuses to start if HERMES_LISTS_TOKEN or a LAN hostname in
+      # ALLOWED_HOSTS is set while HERMES_BEHIND_LOOPBACK=1.
       - "127.0.0.1:8080:8080"
     environment:
       - ADDR=0.0.0.0
+      - HERMES_BEHIND_LOOPBACK=1
+      - HERMES_TOKEN=${HERMES_TOKEN:-}
+      - HERMES_LISTS_TOKEN=${HERMES_LISTS_TOKEN:-}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-}
-      - OLLAMA_BASE=http://host.docker.internal:11434
+      # Household time zone for reminders and the briefing (also settable in
+      # Settings → Ort & Zeit).
+      - TZ=${TZ:-Europe/Berlin}
+      # Optional integrations; leave empty to configure them in the UI.
+      - HA_URL=${HA_URL:-}
+      - HA_TOKEN=${HA_TOKEN:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      # A watched folder of notes needs a read-only mount as well, e.g.
+      #   volumes: - ~/Notes:/notes:ro   and HERMES_DOCS_DIR=/notes
+      - HERMES_DOCS_DIR=${HERMES_DOCS_DIR:-}
+      # Your LAN prefixes (incl. IPv6) that "read a link" must never fetch;
+      # the container cannot see the host's own networks.
+      - HERMES_BLOCK_CIDRS=${HERMES_BLOCK_CIDRS:-}
+      # Linux: a stock Ollama listens on 127.0.0.1 only, which the container
+      # cannot reach. Make it listen on the docker bridge (OLLAMA_HOST, see
+      # README) or point DOCKER_OLLAMA_BASE elsewhere. A separate name from
+      # OLLAMA_BASE so a localhost value in .env meant for `go run` does not
+      # leak into the container, where localhost is the container itself.
+      - OLLAMA_BASE=${DOCKER_OLLAMA_BASE:-http://host.docker.internal:11434}
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
       - MISTRAL_MODEL=${MISTRAL_MODEL:-mistral-medium-latest}
     extra_hosts:

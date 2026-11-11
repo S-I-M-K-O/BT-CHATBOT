@@ -194,9 +194,14 @@ python3 -m piper.train.export_onnx \
 cp /path/to/config.json BT7274_DE.onnx.json
 ```
 
-Optional: BT talks slowly and calmly — open `BT7274_DE.onnx.json` and raise
-`inference.length_scale` (e.g. 1.1–1.3) to slow the voice down, and lower
-`inference.noise_scale` slightly for a less "breathy" robotic feel.
+Optional: BT talks slowly and calmly. For the plain `piper` CLI you can raise
+`inference.length_scale` in `BT7274_DE.onnx.json` (e.g. 1.1–1.3) and lower
+`inference.noise_scale` slightly for a less "breathy" robotic feel. **HERMES
+ignores that block**, though: it always passes `--length_scale`,
+`--noise_scale` and `--noise_w` on the command line. In HERMES the tuning lives
+on the voice's `builtinVoices` line in `internal/hermes/tts.go` (`lengthScale`, `noiseScale`,
+`noiseW`); the base length scale is multiplied with the user's speed setting
+(`length_scale = lengthScale / speed`).
 
 Sanity test with the same Piper binary the project bundles:
 
@@ -208,35 +213,49 @@ echo "Verstanden, Pilot." | piper -m BT7274_DE.onnx --config BT7274_DE.onnx.json
 
 ## Step 8 — Drop it into this HERMES project
 
-1. Copy the two files into the repo:
+> The WAV-to-PIPER-script kit's `install_to_hermes.sh` does steps 1–4 for you. The manual steps are below.
+
+1. Put the two files in their own folder (folder name = file name = voice key):
    ```bash
-   cp BT7274_DE.onnx BT7274_DE.onnx.json voices/
+   mkdir -p voices/BT7274_DE
+   cp BT7274_DE.onnx BT7274_DE.onnx.json voices/BT7274_DE/
    ```
-2. Add it to the allowed voices in `main.go` (the `piperVoices` map):
+2. Register the voice: add one line to `builtinVoices` in `internal/hermes/tts.go`. This is the
+   only voice table in the code; the allow-list (`piperVoices`) is built from it.
    ```go
-   "BT7274":    "BT7274.onnx",
-   "ScorchAI":  "ScorchAI.onnx",
-   "PDA":       "PDA.onnx",
-   "BT7274_DE": "BT7274_DE.onnx",
+   {Key: "BT7274_DE", Name: "BT-7274", Lang: "de", model: "BT7274_DE/BT7274_DE.onnx"},
    ```
-3. Add a selection option in `static/index.html` (the `s_pipervoice` select):
+   Optional tuning on the same line: `lengthScale` (>1 is slower), `noiseScale`,
+   `noiseW`, and `pitch` (e.g. 0.9 is lower). A trained BT voice should
+   already sound like BT, so start without any and only add what it needs.
+   `Lang: "de"` is what makes HERMES treat it as German: German persona and
+   replies, German small talk, wake word answer "Ja?", German speech
+   normalisation (units, numbers) and German speech recognition in the browser.
+3. Add it to `voices/voices.json` with `"language": {"code": "de_DE", "family": "de", ...}`
+   and the two file names (`BT7274_DE/BT7274_DE.onnx`, `BT7274_DE/BT7274_DE.onnx.json`)
+   with their sizes. Copy the `JarvisDE` entry as a template.
+   `go test ./...` (`TestBundledVoiceCatalogue`) fails if the entry is missing,
+   the language disagrees with `builtinVoices` or a size is wrong.
+4. Optional: add a fallback option to the `s_pipervoice` select in
+   `web/static/index.html`. The settings panel replaces this list with the one from
+   `/api/status` as soon as it loads, so this only matters for the first moment
+   after a page load:
    ```html
-   <option value="BT7274_DE">BT-7274 German</option>
+   <option value="BT7274_DE" data-lang="de">BT-7274 (DE)</option>
    ```
-4. Verify the container's bundled Piper has **German espeak-ng data** so the
+5. Verify the container's bundled Piper has **German espeak-ng data** so the
    `de` phonemes in the config exist:
    ```bash
-   docker exec bt-chatbot ls /opt/piper/lib/espeak-ng-data/voices/ | grep -i de
+   docker exec bt-chatbot ls /opt/piper/espeak-ng-data/de_dict
    ```
    The stock Piper release ships all espeak-ng languages, so it should already
    be there.
-5. Rebuild:
+6. Rebuild:
    ```bash
    docker compose up -d --build
    ```
-6. Pick the voice: ⚙ Settings → HERMES (local Piper) → **BT-7274 German** →
-   *Test current voice*. To make it the default, set `"piperVoice": "BT7274_DE"`
-   in the settings JSON.
+7. Pick the voice: ⚙ Settings → HERMES (local Piper) → **BT-7274 (DE)** →
+   *Test current voice*, then **Save**.
 
 ---
 

@@ -1,9 +1,17 @@
 .git
 data
+backups
 settings.json
 *.log
 .env
-.env.example
+.env.*
 Dockerfile
-docker-compose.yml
+docker-compose*.yml
+Taskfile.yml
+.github
+tests
+bt-chatbot
 README.md
+# The image gets freshly verified copies from the assets stage
+web/static/vendor
+.hermes-work
