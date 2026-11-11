@@ -95,7 +95,7 @@ go run ./cmd/hermes
 # open http://localhost:8080
 ```
 
-You need Go 1.22+ and, for the HERMES voice, the `piper` binary on your `PATH` (or `PIPER_BIN`). Without Piper he falls back to the browser voice and says so. Without the fetched assets he still runs; only voice ID (and later documents / read-a-link) are unavailable.
+You need Go 1.22+ and, for the HERMES voice, the `piper` binary on your `PATH` (or `PIPER_BIN`). Without Piper he falls back to the browser voice and says so. Without the fetched assets he still runs; only voice ID, PDF text extraction and the article extractor for read-a-link are unavailable (`task assets` fetches them).
 
 Speech recognition needs **Chrome or Edge**. Other browsers can type; Brave exposes the API without a speech service, so HERMES tells you to switch.
 

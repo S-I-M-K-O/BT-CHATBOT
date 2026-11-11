@@ -1,6 +1,6 @@
 "use strict";
-// Run: node --test tests/js/
-// Pure helpers of static/reminders.js (HermesReminders).
+// Run: node --test web/tests/
+// Pure helpers of web/static/reminders.js (HermesReminders).
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const R = require("../static/reminders.js");

@@ -144,7 +144,7 @@ tasks:
   check:
     desc: Everything CI checks — gofmt, go vet, all tests, JS syntax
     cmds:
-      - test -z "$(gofmt -l cmd internal)" || (gofmt -l cmd internal && echo "run: task fmt" && exit 1)
+      - 'test -z "$(gofmt -l cmd internal)" || (gofmt -l cmd internal && echo "not formatted, run: task fmt" && exit 1)'
       - go vet ./...
       - task: test
       - for f in web/static/*.js; do node --check "$f" || exit 1; done

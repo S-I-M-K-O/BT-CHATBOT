@@ -1,6 +1,6 @@
 "use strict";
-// Run: node --test tests/js/
-// Pure helpers of static/lists.js (HermesLists).
+// Run: node --test web/tests/
+// Pure helpers of web/static/lists.js (HermesLists).
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");

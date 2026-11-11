@@ -1,6 +1,6 @@
 "use strict";
-// Run: node --test tests/js/
-// Pure helpers behind the settings window (static/lib.js).
+// Run: node --test web/tests/
+// Pure helpers behind the settings window (web/static/lib.js).
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const L = require("../static/lib.js");

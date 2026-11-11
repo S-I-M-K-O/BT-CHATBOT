@@ -1,7 +1,7 @@
 "use strict";
-// Run: node --test tests/js/
-// static/checkins.js (HermesCheckins) and the pure helpers of
-// static/integrations.js (HermesIntegrations).
+// Run: node --test web/tests/
+// web/static/checkins.js (HermesCheckins) and the pure helpers of
+// web/static/integrations.js (HermesIntegrations).
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");

@@ -1,6 +1,6 @@
 "use strict";
-// Run: node --test tests/js/
-// Pure helpers of static/docs.js (HermesDocs).
+// Run: node --test web/tests/
+// Pure helpers of web/static/docs.js (HermesDocs).
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const D = require("../static/docs.js");

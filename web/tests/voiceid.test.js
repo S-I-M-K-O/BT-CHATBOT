@@ -1,5 +1,5 @@
 "use strict";
-// Run: node --test tests/js/
+// Run: node --test web/tests/
 // Voice ID: pure core (fbank, CMN, vectors, VAD ring, base64), the capture
 // worklet's resampler/chunker, and voiceid.js against fake browser APIs.
 // No ONNX here: the worker's model run is replaced by a fake.

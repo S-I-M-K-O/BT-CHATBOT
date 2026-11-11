@@ -1,6 +1,6 @@
 "use strict";
-// Run: node --test tests/js/
-// Pure helpers of static/people.js (HermesPeople) and static/memory.js (HermesMemory).
+// Run: node --test web/tests/
+// Pure helpers of web/static/people.js (HermesPeople) and web/static/memory.js (HermesMemory).
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const P = require("../static/people.js");

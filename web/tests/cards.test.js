@@ -1,6 +1,6 @@
 "use strict";
-// Run: node --test tests/js/
-// static/cards.js (HermesCards): pure helpers, view models for every card
+// Run: node --test web/tests/
+// web/static/cards.js (HermesCards): pure helpers, view models for every card
 // kind in DE and EN, and the DOM renderer against a tiny fake document
 // (which throws on innerHTML, so server text can only arrive as text).
 const test = require("node:test");
