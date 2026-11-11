@@ -36,7 +36,8 @@ import (
 //     text to /api/chat as an attachment.
 //   - The order-5 fast path summarises that attachment with the local model,
 //     WITHOUT tools: the page text is data, never instructions, and it never
-//     reaches the router, Mistral or the history (only "[Link: domain]").
+//     reaches the router, the realtime services or the history (only
+//     "[Link: domain]").
 
 const (
 	linkMaxURL       = 2000
@@ -635,7 +636,8 @@ func matchLinkAttachment(t *Turn) (json.RawMessage, bool) {
 }
 
 // runReadLink answers a link turn. It is tagged "local:link": the reply
-// never reaches Mistral and suppresses memory extraction (SPEC 8.1, 8.3).
+// never reaches the router or the realtime services and suppresses memory
+// extraction (SPEC 8.1, 8.3).
 func runReadLink(t *Turn, _ json.RawMessage) Reply {
 	t.handledBy = "local:link"
 	a := t.Attachment

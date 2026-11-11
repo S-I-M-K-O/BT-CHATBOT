@@ -32,7 +32,7 @@ import (
 // chunks in the background with the local embedding model; without one the
 // documents stay searchable lexically (BM25). Questions are answered by the
 // LOCAL model only, without tools, from the best excerpts, citing the
-// document name. Document text never reaches Mistral, the router or the
+// document name. Document text never leaves the machine, reaches the router or the
 // memory extractor (the turn is tagged "local:docs").
 //
 // Scope: a document belongs to a person or to the household (""). A speaker

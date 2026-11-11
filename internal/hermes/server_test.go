@@ -22,7 +22,6 @@ func TestStatusEndpoint(t *testing.T) {
 	defer ollama.Close()
 	t.Setenv("OLLAMA_BASE", ollama.URL+"/")
 	t.Setenv("PIPER_BIN", filepath.Join(t.TempDir(), "nope"))
-	t.Setenv("MISTRAL_API_KEY", "")
 	voiceDir := t.TempDir()
 	os.WriteFile(filepath.Join(voiceDir, "voices.json"), []byte(`{"PDA":{"language":{"family":"de","code":"de_DE"}}}`), 0o644)
 	t.Setenv("VOICE_DIR", voiceDir)
@@ -39,8 +38,15 @@ func TestStatusEndpoint(t *testing.T) {
 	if !st.Ollama.OK || len(st.Ollama.Models) != 2 || st.Ollama.Models[0] != "qwen3.5:latest" {
 		t.Errorf("ollama: %+v", st.Ollama)
 	}
-	if st.Piper.OK || st.Mistral.Enabled {
-		t.Errorf("piper/mistral: %+v %+v", st.Piper, st.Mistral)
+	if st.Piper.OK {
+		t.Errorf("piper: %+v", st.Piper)
+	}
+	var top map[string]json.RawMessage
+	_ = json.Unmarshal(rec.Body.Bytes(), &top)
+	for k := range top {
+		if k != "ollama" && k != "piper" && k != "voices" && k != "features" {
+			t.Errorf("unexpected status entry %q (no cloud model any more)", k)
+		}
 	}
 	if len(st.Voices) != len(builtinVoices) || st.Voices[0].Key != "BT7274" || st.Voices[0].Name != "BT-7274" {
 		t.Errorf("voices: %+v", st.Voices)

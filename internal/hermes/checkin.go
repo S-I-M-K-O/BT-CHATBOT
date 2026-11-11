@@ -31,7 +31,7 @@ import (
 // merged into one line), and, per the spec, regardless of quiet hours: the
 // user's own appointment is not a nudge. Quiet hours are reported to the
 // browser for the sitting nudges. Calendar titles go through safeTitle and
-// are only ever spoken; nothing here reaches a language model or Mistral.
+// are only ever spoken; nothing here reaches a language model.
 
 var (
 	// checkinPoll is how often the calendar is polled.

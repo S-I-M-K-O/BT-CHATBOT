@@ -177,7 +177,7 @@ func TestParseConfigValues(t *testing.T) {
 }
 
 func TestConfigSecretKeys(t *testing.T) {
-	for _, k := range []string{"haToken", "haUrl", "googleClientSecret", "googleClientId", "lockPin", "pin", "HERMES_TOKEN", "mistral_api_key", "password", "smtpPassword"} {
+	for _, k := range []string{"haToken", "haUrl", "googleClientSecret", "googleClientId", "lockPin", "pin", "HERMES_TOKEN", "weather_api_key", "password", "smtpPassword"} {
 		c := parseConfig(k + " = x\n")
 		if len(c.errors) != 1 || c.errors[0].Code != "secret" || len(c.managed) != 0 {
 			t.Errorf("%s not rejected as secret: %+v", k, c.errors)

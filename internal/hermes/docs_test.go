@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -120,7 +121,7 @@ func (f *docsFake) setEmbedStatus(s int) {
 	f.mu.Unlock()
 }
 
-// docsEnv isolates a documents test: temp data and settings, no Mistral, no
+// docsEnv isolates a documents test: temp data and settings, no
 // router, no automatic memory, people Anna and Ben, an immediate idle gate.
 func docsEnv(t *testing.T, embed bool) {
 	t.Helper()
@@ -129,7 +130,6 @@ func docsEnv(t *testing.T, embed bool) {
 	withTestRegistry(t)
 	resetEmbedState()
 	resetDocsMem()
-	t.Setenv("MISTRAL_API_KEY", "")
 	t.Setenv("GEN_DIR", t.TempDir())
 	t.Setenv("OLLAMA_BASE", "http://127.0.0.1:1")
 	t.Setenv("HERMES_DOCS_DIR", "")
@@ -579,26 +579,33 @@ func TestDocsAccessClasses(t *testing.T) {
 	}
 }
 
-func TestDocsTurnNeverReachesMistral(t *testing.T) {
+func TestDocsTurnNeverReachesRealtime(t *testing.T) {
 	docsEnv(t, false)
-	fm := newFakeMistral(t)
-	fm.script("/v1/chat/completions", fakeResp{200, `{"choices":[{"message":{"role":"assistant","content":"x"}}]}`})
-	t.Setenv("MISTRAL_API_KEY", "test-key")
+	rt := newFakeRealtime(t)
+	s := loadSettings()
+	s.HomeCity = "Berlin"
+	if err := saveSettings(s); err != nil {
+		t.Fatal(err)
+	}
 	newDocsFake(t, "Kundennummer 4711.")
 	addDoc(t, "Stadtwerke.txt", "", "Kundennummer bei den Stadtwerken: 4711. Zählerstand Strom 12345.")
 	h := newMux()
 	postChat(t, h, `{"clientId":"`+testClient+`","messages":[{"role":"user","content":"Was steht in meinen Notizen zur Kundennummer der Stadtwerke?"}]}`)
-	if n := fm.hits["/v1/chat/completions"]; n != 0 {
-		t.Fatalf("Mistral called %d times for a docs turn", n)
+	if n := len(rt.requests()); n != 0 {
+		t.Fatalf("a docs turn asked %d realtime services", n)
 	}
-	// The next weather question carries neither the docs answer nor the text.
+	// The next weather question sends neither the docs answer nor the text.
 	postChat(t, h, taggedBody(testClient,
 		msg("user", "Was steht in meinen Notizen zur Kundennummer der Stadtwerke?", "local:docs", "_single", false),
 		msg("assistant", "Deine Kundennummer ist 4711.", "local:docs", "_single", false),
 		msg("user", "Wie wird das Wetter morgen?", "", "", false)))
-	for _, b := range fm.bodies["/v1/chat/completions"] {
-		if strings.Contains(b, "4711") || strings.Contains(b, "Stadtwerke") {
-			t.Errorf("Mistral body leaks document data: %s", b)
+	if rt.hits("/forecast") == 0 {
+		t.Fatal("the weather question should reach the weather service")
+	}
+	for _, u := range rt.requests() {
+		raw, _ := url.QueryUnescape(u.String())
+		if strings.Contains(raw, "4711") || strings.Contains(raw, "Stadtwerke") || strings.Contains(raw, "Kundennummer") {
+			t.Errorf("realtime request leaks document data: %s", raw)
 		}
 	}
 }

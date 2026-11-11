@@ -15,8 +15,8 @@ import (
 // Batch 3 end to end through POST /api/chat, in English (BT7274) and German
 // (JarvisDE): smart home commands, questions and refusals against a fake
 // Home Assistant, a question about an uploaded document answered by a fake
-// local model, and a link summary of an httptest page. A fake Mistral with
-// a key set must never be called by any of these turns.
+// local model, and a link summary of an httptest page. Fake realtime
+// services (Open-Meteo, news) must never be asked by any of these turns.
 
 type b3Lang struct {
 	voice, lang          string
@@ -120,9 +120,9 @@ func (f *b3Ollama) streamed() []map[string]any {
 }
 
 // b3Env: temp data and settings, single-user mode, the given voice, a fake
-// HA (connected and warm), a fake local model, a fake Mistral with a key, a
+// HA (connected and warm), a fake local model, fake realtime services, a
 // public stand-in page for links, and documents indexed at once.
-func b3Env(t *testing.T, voice string) (http.Handler, *fakeHA, *b3Ollama, *fakeMistral, *httptest.Server) {
+func b3Env(t *testing.T, voice string) (http.Handler, *fakeHA, *b3Ollama, *fakeRealtime, *httptest.Server) {
 	t.Helper()
 	docsEnv(t, false)
 	haReset()
@@ -157,8 +157,7 @@ func b3Env(t *testing.T, voice string) (http.Handler, *fakeHA, *b3Ollama, *fakeM
 	})
 
 	o := newB3Ollama(t)
-	fm := newFakeMistral(t)
-	fm.script("/v1/chat/completions", fakeResp{200, `{"choices":[{"message":{"role":"assistant","content":"MISTRAL"}}]}`})
+	fm := newFakeRealtime(t)
 
 	s := loadSettings()
 	s.PiperVoice = voice
@@ -316,9 +315,9 @@ func TestBatch3EndToEndEnglishAndGerman(t *testing.T) {
 				t.Errorf("link instruction %q, want %q", user, c.linkInstruction)
 			}
 
-			// Nothing of this went to Mistral.
-			if n := fm.hits["/v1/chat/completions"]; n != 0 {
-				t.Errorf("Mistral called %d times", n)
+			// Nothing of this asked a realtime service.
+			if n := len(fm.requests()); n != 0 {
+				t.Errorf("realtime services asked %d times", n)
 			}
 			time.Sleep(10 * time.Millisecond) // let after-turn work settle before cleanup
 		})

@@ -90,66 +90,39 @@ func replyLanguageReminder(s *Settings) string {
 
 // phrases holds the spoken/displayed HERMES voicelines in one language.
 type phrases struct {
-	neuralOffline        string // %s ollama base, %s model
-	localModelErr        string // %d status, %s model
-	modelMissing         string // %s model
-	streamBroken         string
-	satelliteDown        string
-	satelliteKeyRejected string
-	noData               string
-	imageFabricator      string
-	imageSynthesis       string
-	imageEmpty           string
-	imageRetrieve        string
-	imageStore           string
-	imageCaption         string
-	searchNoSubject      string
-	searchEmpty          string
-	searchStore          string
-	searchDownload       string
-	searchFound          string // %d pictures, %s subject
+	neuralOffline   string // %s ollama base, %s model
+	localModelErr   string // %d status, %s model
+	modelMissing    string // %s model
+	streamBroken    string
+	searchNoSubject string
+	searchEmpty     string
+	searchStore     string
+	searchDownload  string
+	searchFound     string // %d pictures, %s subject
 }
 
 var phrasesEN = phrases{
-	neuralOffline:        "My local neural core is offline. Check that Ollama is running at %s and that the model %s is pulled.",
-	localModelErr:        "Local model error (%d). Try: ollama pull %s",
-	modelMissing:         "The model %s is not installed. Run: ollama pull %s",
-	streamBroken:         "My transmission was interrupted. Please try again.",
-	satelliteDown:        "My satellite link is down. Mistral could not be reached — check that MISTRAL_API_KEY is set.",
-	satelliteKeyRejected: "Mistral rejected my satellite credentials. Check MISTRAL_API_KEY.",
-	noData:               "No data recovered from the satellite. Try again.",
-	imageFabricator:      "My image fabricator is offline. Check the Mistral API key.",
-	imageSynthesis:       "Image synthesis failed. Try again in a moment.",
-	imageEmpty:           "The image came back empty. Try a more specific request.",
-	imageRetrieve:        "Could not retrieve the generated image.",
-	imageStore:           "Could not store the generated image.",
-	imageCaption:         "Image fabricated.",
-	searchNoSubject:      "What should I search for?",
-	searchEmpty:          "No pictures found on the network. Try a different subject.",
-	searchStore:          "Could not store the pictures.",
-	searchDownload:       "Found pictures but could not download them.",
-	searchFound:          "Found %d pictures of %s.",
+	neuralOffline:   "My local neural core is offline. Check that Ollama is running at %s and that the model %s is pulled.",
+	localModelErr:   "Local model error (%d). Try: ollama pull %s",
+	modelMissing:    "The model %s is not installed. Run: ollama pull %s",
+	streamBroken:    "My transmission was interrupted. Please try again.",
+	searchNoSubject: "What should I search for?",
+	searchEmpty:     "No pictures found on the network. Try a different subject.",
+	searchStore:     "Could not store the pictures.",
+	searchDownload:  "Found pictures but could not download them.",
+	searchFound:     "Found %d pictures of %s.",
 }
 
 var phrasesDE = phrases{
-	neuralOffline:        "Meine lokale Recheneinheit ist offline. Prüfe, ob Ollama unter %s läuft und das Modell %s geladen ist.",
-	localModelErr:        "Fehler des lokalen Modells (%d). Versuche: ollama pull %s",
-	modelMissing:         "Das Modell %s ist nicht installiert. Ausführen: ollama pull %s",
-	streamBroken:         "Meine Übertragung wurde unterbrochen. Bitte versuch es erneut.",
-	satelliteDown:        "Meine Satellitenverbindung ist unterbrochen. Mistral konnte nicht erreicht werden — prüfe, ob MISTRAL_API_KEY gesetzt ist.",
-	satelliteKeyRejected: "Mistral hat meine Satelliten-Zugangsdaten abgelehnt. Prüfe MISTRAL_API_KEY.",
-	noData:               "Keine Daten vom Satelliten erhalten. Versuch es erneut.",
-	imageFabricator:      "Meine Bild-Fabrik ist offline. Prüfe den Mistral-API-Schlüssel.",
-	imageSynthesis:       "Die Bildsynthese ist fehlgeschlagen. Versuch es gleich noch einmal.",
-	imageEmpty:           "Das Bild kam leer zurück. Versuch eine genauere Anfrage.",
-	imageRetrieve:        "Das erzeugte Bild konnte nicht abgerufen werden.",
-	imageStore:           "Das erzeugte Bild konnte nicht gespeichert werden.",
-	imageCaption:         "Bild erstellt.",
-	searchNoSubject:      "Wonach soll ich suchen?",
-	searchEmpty:          "Keine Bilder im Netzwerk gefunden. Versuch ein anderes Motiv.",
-	searchStore:          "Die Bilder konnten nicht gespeichert werden.",
-	searchDownload:       "Bilder gefunden, aber nicht herunterladbar.",
-	searchFound:          "Gefunden: %d Bilder von %s.",
+	neuralOffline:   "Meine lokale Recheneinheit ist offline. Prüfe, ob Ollama unter %s läuft und das Modell %s geladen ist.",
+	localModelErr:   "Fehler des lokalen Modells (%d). Versuche: ollama pull %s",
+	modelMissing:    "Das Modell %s ist nicht installiert. Ausführen: ollama pull %s",
+	streamBroken:    "Meine Übertragung wurde unterbrochen. Bitte versuch es erneut.",
+	searchNoSubject: "Wonach soll ich suchen?",
+	searchEmpty:     "Keine Bilder im Netzwerk gefunden. Versuch ein anderes Motiv.",
+	searchStore:     "Die Bilder konnten nicht gespeichert werden.",
+	searchDownload:  "Bilder gefunden, aber nicht herunterladbar.",
+	searchFound:     "Gefunden: %d Bilder von %s.",
 }
 
 func phrasesFor(voice string) phrases {
@@ -293,8 +266,8 @@ func Run() {
 
 	serveErr := make(chan error, 1)
 	go func() {
-		log.Printf("HERMES online on http://%s (Ollama: %s, Piper: %v, Mistral: %v)",
-			addr, ollamaBase(), piperAvailable(), mistralEnabled())
+		log.Printf("HERMES online on http://%s (Ollama: %s, Piper: %v)",
+			addr, ollamaBase(), piperAvailable())
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serveErr <- err
 		}

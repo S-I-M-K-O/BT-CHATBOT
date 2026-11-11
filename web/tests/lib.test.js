@@ -374,7 +374,7 @@ test("cleanForDisplay strips think blocks (complete and unclosed)", () => {
 });
 
 test("stripMarkdown keeps identifiers and multiplication intact", () => {
-  assert.equal(L.stripMarkdown("check that MISTRAL_API_KEY is set"), "check that MISTRAL_API_KEY is set");
+  assert.equal(L.stripMarkdown("check that OLLAMA_BASE is set"), "check that OLLAMA_BASE is set");
   assert.equal(L.stripMarkdown("use snake_case and C#"), "use snake_case and C#");
   assert.equal(L.stripMarkdown("Price 5*3=15"), "Price 5 × 3=15");
   assert.equal(L.stripMarkdown("5 * 3 = 15"), "5 × 3 = 15");
@@ -390,7 +390,7 @@ test("normalizeForSpeech: what the browser voice must not read literally", () =>
   assert.equal(en("Wind 10 km/h"), "Wind 10 kilometers per hour");
   assert.equal(en("5*3 is 15"), "5 times 3 is 15");
   assert.equal(en("rock & roll"), "rock and roll");
-  assert.ok(!/MISTRAL_API/.test(en("set MISTRAL_API_KEY")));
+  assert.ok(!/OLLAMA_BASE/.test(en("set OLLAMA_BASE")));
   assert.match(L.normalizeForSpeech("5*3", "de"), /mal/);
 });
 
@@ -1262,5 +1262,7 @@ test("keepCard: stores known kinds as plain copies, drops private reminder text 
   assert.equal(L.keepCard({ kind: "list", data: [1] }), null);
   assert.equal(L.keepCard({ kind: "docs", data: { big: "x".repeat(20000) } }), null);
   assert.equal(L.keepCard(null), null);
+  assert.equal(L.keepCard({ kind: "weather", data: { city: "Berlin", days: [] } }).kind, "weather");
+  assert.equal(L.keepCard({ kind: "news", data: { items: [{ title: "A" }] } }).kind, "news");
   assert.equal(L.CARDS_PER_MESSAGE, 4);
 });

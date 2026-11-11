@@ -406,13 +406,12 @@ func TestRouterChecksAccessBeforeRun(t *testing.T) {
 	}
 }
 
-// Pipeline order: pending/fast path, then KB, then router, then Mistral,
-// then persona.
+// Pipeline order: pending/fast path, then KB, then router, then the local
+// realtime answers, then persona.
 func TestPipelineOrder(t *testing.T) {
 	f := routerEnv(t)
 	timer, _ := stubRouterTools(t)
-	fm := newFakeMistral(t)
-	fm.script("/v1/chat/completions", fakeResp{200, `{"choices":[{"message":{"role":"assistant","content":"Mistral weather."}}]}`})
+	newFakeRealtime(t)
 	fastRuns := 0
 	registerTool(Tool{Name: "stub_fast", Run: func(*Turn, json.RawMessage) Reply { fastRuns++; return Reply{Text: "Fast."} }})
 	registerFastPath(FastPath{Name: "stub_fast", Order: 50, Tool: "stub_fast", Match: func(t *Turn) (json.RawMessage, bool) {
@@ -433,10 +432,10 @@ func TestPipelineOrder(t *testing.T) {
 		t.Errorf("KB must win over the router: %s", s)
 	}
 	if s := src("stubtimer what's the weather in Berlin tomorrow"); s != "tool:stub_timer" || len(*timer) != 1 {
-		t.Errorf("router must win over Mistral: %s", s)
+		t.Errorf("router must win over realtime: %s", s)
 	}
-	if s := src("what's the weather in Berlin tomorrow"); s != "mistral" {
-		t.Errorf("Mistral must win over persona: %s", s)
+	if s := src("what's the weather in Berlin tomorrow"); s != "realtime:weather" {
+		t.Errorf("realtime must win over persona: %s", s)
 	}
 	if s := src("tell me a story about titans"); s != "persona" {
 		t.Errorf("persona last: %s", s)

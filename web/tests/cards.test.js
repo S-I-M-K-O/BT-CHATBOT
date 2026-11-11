@@ -326,6 +326,47 @@ test("model docs/link/memory", () => {
   assert.equal(del.title, "Removed from memory");
 });
 
+test("model weather/news: realtime cards in DE and EN, caps and bad data", () => {
+  const w = C.model(
+    "weather",
+    {
+      city: "Berlin",
+      rain: false,
+      now: { temp: 6.4, feelsLike: 3, code: 3, condition: "bedeckt", wind: 12 },
+      days: [{ label: "Heute", date: "2026-11-11", max: 11, min: 2, rain: 40, code: 61, condition: "Regen" }],
+    },
+    { lang: "de" }
+  );
+  assert.equal(w.title, "Wetter · Berlin");
+  assert.deepEqual([w.now.temp, w.now.feelsLike, w.now.wind, w.now.icon], [6, 3, 12, "☁️"]);
+  assert.deepEqual([w.days[0].label, w.days[0].max, w.days[0].min, w.days[0].rain, w.days[0].icon], ["Heute", 11, 2, 40, "🌧️"]);
+  const we = C.model("weather", { city: "London", days: [{ date: "2026-11-12", max: 9, min: 4, code: 0, condition: "clear" }] }, { lang: "en" });
+  assert.equal(we.title, "Weather · London");
+  assert.equal(we.now, null);
+  assert.equal(we.days[0].label, "Thu, Nov 12"); // no label: from the date
+  assert.equal(we.days[0].rain, null);
+  assert.equal(C.model("weather", { city: "X", days: [{ label: "Heute" }] }, { lang: "de" }), null);
+  assert.equal(C.model("weather", { city: "X", now: { temp: "warm" } }, { lang: "de" }), null);
+  assert.equal(C.wmoIcon(95), "⛈️");
+  assert.equal(C.wmoIcon(73), "❄️");
+  assert.equal(C.wmoIcon("x"), "🌡️");
+
+  const n = C.model(
+    "news",
+    { source: "tagesschau", topic: "", items: [{ title: "A", topline: "Bundestag" }, { title: "" }, { title: "B" }, "x"] },
+    { lang: "de" }
+  );
+  assert.equal(n.title, "Schlagzeilen");
+  assert.equal(n.source, "tagesschau.de");
+  assert.deepEqual(n.items, [{ title: "A", topline: "Bundestag" }, { title: "B", topline: "" }]);
+  const nt = C.model("news", { source: "googlenews", topic: "football", items: [1, 2, 3, 4, 5, 6, 7].map((i) => ({ title: "H" + i })) }, { lang: "en" });
+  assert.equal(nt.title, "News: football");
+  assert.equal(nt.source, "Google News");
+  assert.equal(nt.items.length, 5);
+  assert.equal(C.model("news", { source: "evil", items: [{ title: "A" }] }, { lang: "en" }).source, "");
+  assert.equal(C.model("news", { items: [] }, { lang: "en" }), null);
+});
+
 test("STRINGS: DE and EN have the same keys", () => {
   assert.deepEqual(Object.keys(C.STRINGS.de).sort(), Object.keys(C.STRINGS.en).sort());
 });
@@ -505,6 +546,25 @@ test("DOM: every kind renders as text only, under the streaming reply, before th
   env.emit("card", { kind: "person", data: { name: "A" } });
   env.emit("card", null);
   env.emit("card", { kind: "calendar", data: "x" });
+});
+
+test("DOM: weather and news cards render as text only", () => {
+  const env = loadBrowser(() => Promise.resolve({}));
+  const live = botMessage(env.dom, "w1", "streaming");
+  const evil = '<img src=x onerror="alert(1)">';
+  env.emit("card", {
+    kind: "weather",
+    data: { city: evil, now: { temp: 6, feelsLike: 3, code: 3, condition: "bedeckt", wind: 12 }, days: [{ label: "Heute", max: 11, min: 2, rain: 40, code: 61, condition: evil }] },
+  });
+  env.emit("card", { kind: "news", data: { source: "tagesschau", items: [{ title: evil, topline: "Inland" }, { title: "Zwei" }] } });
+  const box = live.children[1];
+  assert.equal(box.children.length, 2);
+  assert.ok(box.textContent.includes(evil));
+  assert.ok(box.textContent.includes("6°"));
+  assert.ok(box.textContent.includes("11° / 2°"));
+  assert.ok(box.textContent.includes("Inland"));
+  assert.ok(box.textContent.includes("tagesschau.de"));
+  assert.equal(box.all().filter((n) => n.tagName === "IMG" || n.tagName === "A").length, 0);
 });
 
 test("DOM: msgId targets that message; a safe link gets rel=noopener", () => {

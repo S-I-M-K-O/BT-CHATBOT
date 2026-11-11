@@ -49,9 +49,9 @@ import (
 //     disables it; queries are Read (homeQueries=known) or Open (everyone).
 //   - Routes /api/home/status, /api/home/test (admin), /api/home/entities;
 //     status provider "home". The token never appears in a response or log.
-//   - HA states and names never go to Mistral or into persona context:
-//     replies are tagged fast:/tool:, which the Mistral allowlist drops, and
-//     nothing here registers a context section.
+//   - HA states and names never leave the machine or go into persona
+//     context: replies are tagged fast:/tool: and nothing here registers a
+//     context section.
 
 // ---------------------------------------------------------------------------
 // Limits and timings
@@ -159,7 +159,7 @@ func newHAClient(ctx context.Context, base string) (*haClient, error) {
 		ips, err = net.DefaultResolver.LookupNetIP(rctx, "ip", host)
 		cancel()
 		if err != nil || len(ips) == 0 {
-			// In Docker, .local names do not resolve: the README says to use the IP.
+			// In Docker, .local names do not resolve: docs/smart-home.md says to use the IP.
 			log.Printf("home: cannot resolve the Home Assistant host")
 			return nil, errHAUnreachable
 		}
@@ -2068,7 +2068,7 @@ func haInvalidateStates() {
 }
 
 // haCheckAssistTargets warns when Assist acted on an entity HERMES blocks:
-// it is exposed to Assist in HA, which the README says not to do.
+// it is exposed to Assist in HA, which docs/smart-home.md says not to do.
 func haCheckAssistTargets(c *haCache, ids []string) {
 	for _, id := range ids {
 		for _, e := range c.ents {

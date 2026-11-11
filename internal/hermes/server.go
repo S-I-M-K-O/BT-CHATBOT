@@ -172,7 +172,7 @@ func originGuard(next http.Handler) http.Handler {
 // ---------------------------------------------------------------------------
 // Access token
 //
-// The API can rewrite the system prompt and spend the Mistral key, so anything
+// The API can rewrite the system prompt and reads personal data, so anything
 // that does not come from this machine needs HERMES_TOKEN. The origin checks
 // above only stop browsers; curl on the LAN sends no Origin at all.
 
@@ -683,7 +683,7 @@ func requireUnlock(h http.HandlerFunc) http.HandlerFunc {
 // or are unprotected; "" when the setup is consistent.
 func lanAccessProblem() string {
 	if envBool("HERMES_INSECURE_NO_TOKEN") {
-		return "WARNING: HERMES_INSECURE_NO_TOKEN is set; anyone who can reach this server can change the system prompt and use the Mistral key"
+		return "WARNING: HERMES_INSECURE_NO_TOKEN is set; anyone who can reach this server can change the system prompt and read personal data"
 	}
 	if os.Getenv("HERMES_TOKEN") != "" {
 		return ""
@@ -762,7 +762,8 @@ func staticHandler(dir string) http.Handler {
 }
 
 // ---------------------------------------------------------------------------
-// Generated images
+// Pictures under /gen/: image-search results (hermes_* files are left over
+// from older versions and still served until the 24-hour pruning)
 
 var genNamePattern = regexp.MustCompile(`^(?:hermes_\d+|search_\d+_\d+)\.(png|jpg|gif|webp)$`)
 
@@ -798,7 +799,8 @@ func handleGen(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, name, info.ModTime(), fh)
 }
 
-// genMaxAge is how long generated / searched images are kept.
+// genMaxAge is how long image-search pictures (and leftover hermes_* files
+// from older versions) are kept.
 const genMaxAge = 24 * time.Hour
 
 func cleanupGenDir() {
@@ -853,9 +855,6 @@ type statusResponse struct {
 	Piper  struct {
 		OK bool `json:"ok"`
 	} `json:"piper"`
-	Mistral struct {
-		Enabled bool `json:"enabled"`
-	} `json:"mistral"`
 	Voices []voiceInfo `json:"voices"`
 	// Features holds the registerStatus providers; omitted while none exist.
 	Features map[string]any `json:"features,omitempty"`
@@ -958,7 +957,6 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 	var resp statusResponse
 	resp.Ollama = probeOllama(r.Context())
 	resp.Piper.OK = piperAvailable()
-	resp.Mistral.Enabled = mistralEnabled()
 	resp.Voices = listVoices()
 	resp.Features = collectStatus(r.Context())
 	writeJSON(w, http.StatusOK, resp)

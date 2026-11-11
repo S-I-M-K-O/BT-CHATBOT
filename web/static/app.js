@@ -300,7 +300,6 @@
       pillsAria: "System status",
       pillBrain: "Brain",
       pillVoice: "Voice",
-      pillSat: "Satellite",
       exportBtnTitle: "Export chat as Markdown",
       eyeModeBtnTitle: "Eye mode — show only the eye (E)",
       helpBtnTitle: "Keyboard shortcuts (?)",
@@ -388,8 +387,6 @@
       pillVoiceBrowserBad: "Voice: this browser has no speech engine.",
       pillVoiceOk: "Voice online — local Piper is ready.",
       pillVoiceWarn: "Voice: Piper isn't installed, so HERMES uses the browser voice. Install Piper or set PIPER_BIN (the Docker image bundles it).",
-      pillSatOk: "Satellite uplink online — live weather, time, news and image generation via Mistral.",
-      pillSatOff: "Satellite offline (optional): add MISTRAL_API_KEY to .env for live weather, time, news and image generation.",
       serverUnreachable: "HERMES server unreachable — is “go run .” or the Docker container running?",
       // toasts
       undo: "Undo",
@@ -510,7 +507,6 @@
       pillsAria: "Systemstatus",
       pillBrain: "Gehirn",
       pillVoice: "Stimme",
-      pillSat: "Satellit",
       exportBtnTitle: "Chat als Markdown exportieren",
       eyeModeBtnTitle: "Augenmodus – nur das Auge zeigen (E)",
       helpBtnTitle: "Tastenkürzel (?)",
@@ -597,8 +593,6 @@
       pillVoiceBrowserBad: "Stimme: Dieser Browser hat keine Sprachausgabe.",
       pillVoiceOk: "Stimme online – lokales Piper ist bereit.",
       pillVoiceWarn: "Stimme: Piper ist nicht installiert, HERMES nutzt die Browserstimme. Installiere Piper oder setze PIPER_BIN (das Docker-Image enthält es).",
-      pillSatOk: "Satellitenverbindung online – Live-Wetter, Uhrzeit, Nachrichten und Bilder über Mistral.",
-      pillSatOff: "Satellit offline (optional): MISTRAL_API_KEY in .env eintragen für Live-Wetter, Uhrzeit, Nachrichten und Bilder.",
       serverUnreachable: "HERMES-Server nicht erreichbar – läuft „go run .“ oder der Docker-Container?",
       undo: "Rückgängig",
       autoplayToast: "Klicke irgendwo auf die Seite, damit HERMES sprechen darf.",
@@ -5029,11 +5023,6 @@
         } else {
           setPill("pillVoice", "warn", "pillVoiceWarn");
         }
-        if (statusInfo.mistral && statusInfo.mistral.enabled) {
-          setPill("pillSat", "ok", "pillSatOk");
-        } else {
-          setPill("pillSat", "off", "pillSatOff");
-        }
         populatePiperVoices();
         if (settingsOpen) populateModels(settings.localModel, true);
         fillModelLists();
@@ -5044,14 +5033,13 @@
         if (dom.statusDot) dom.statusDot.classList.remove("online");
         setPill("pillOllama", "bad", "serverUnreachable");
         setPill("pillVoice", "bad", "serverUnreachable");
-        setPill("pillSat", "bad", "serverUnreachable");
       })
       .then(function () {
         clearTimeout(timer);
       });
   }
 
-  ["pillOllama", "pillVoice", "pillSat"].forEach(function (id) {
+  ["pillOllama", "pillVoice"].forEach(function (id) {
     on($(id), "click", function (e) {
       var tip = e.currentTarget.dataset.tip;
       var state = e.currentTarget.dataset.state;

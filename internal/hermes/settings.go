@@ -283,7 +283,7 @@ func clampOrDefault(v, def, lo, hi float64) float64 {
 }
 
 // settingsPath is where settings are written. SETTINGS_FILE wins; the default
-// lives in the data dir next to generated images.
+// lives in the data dir next to the image-search pictures.
 func settingsPath() string {
 	return envOr("SETTINGS_FILE", defaultSettingsPath)
 }

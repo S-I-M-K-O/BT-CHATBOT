@@ -175,7 +175,7 @@ var configForbiddenFields = map[string]string{
 // configSecretKeys are credentials that live in .env or secrets.json. Keys
 // that name a setting (maxTokens) are never treated as secrets.
 var configSecretKeys = wordSet("haurl", "hatoken", "googleclientid", "googleclientsecret",
-	"lockpin", "lockpinhash", "pin", "calendarowner", "mistralapikey", "hermestoken", "liststoken")
+	"lockpin", "lockpinhash", "pin", "calendarowner", "hermestoken", "liststoken")
 
 func isConfigSecretKey(key string) bool {
 	k := strings.ToLower(strings.NewReplacer("_", "", "-", "", ".", "").Replace(key))

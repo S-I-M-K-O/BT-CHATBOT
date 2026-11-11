@@ -16,8 +16,8 @@ import (
 // me" at any time, and the router tool morning_briefing. The text is a
 // deterministic template built from the registerBriefing sections, so no
 // language model ever sees it and nothing personal leaves the machine. The
-// weather and news calls go to Open-Meteo and Google News with the city and
-// the language only.
+// weather and news calls (realtime.go) go to Open-Meteo, the Tagesschau and
+// Google News with the city and the language only.
 //
 // Sections (order, owner): greeting (here, built in, always first),
 // weather 20 (here), calendar
@@ -349,57 +349,6 @@ func briefingGreeting(t *Turn) (string, error) {
 // ---------------------------------------------------------------------------
 // Section 20: weather for the home city (Open-Meteo, no key, fail soft)
 
-type geoPlace struct {
-	lat, lon float64
-	name     string
-}
-
-var geoCache = struct {
-	sync.Mutex
-	m map[string]geoPlace
-}{m: map[string]geoPlace{}}
-
-// cachedGeocode resolves the home city once per process (and endpoint, so
-// tests with fake servers never share entries).
-func cachedGeocode(ctx context.Context, city, lang string) (geoPlace, error) {
-	key := openMeteoGeocodeURL + "|" + lang + "|" + strings.ToLower(city)
-	geoCache.Lock()
-	p, ok := geoCache.m[key]
-	geoCache.Unlock()
-	if ok {
-		return p, nil
-	}
-	lat, lon, name, err := geocodeCity(ctx, city, lang)
-	if err != nil {
-		return geoPlace{}, err
-	}
-	// "Berlin, Germany" -> "Berlin": the country is noise when spoken.
-	if i := strings.Index(name, ", "); i > 0 {
-		name = name[:i]
-	}
-	p = geoPlace{lat: lat, lon: lon, name: safeTitle(name)}
-	geoCache.Lock()
-	if len(geoCache.m) >= 32 {
-		geoCache.m = map[string]geoPlace{}
-	}
-	geoCache.m[key] = p
-	geoCache.Unlock()
-	return p, nil
-}
-
-type briefingForecast struct {
-	Current struct {
-		Temperature float64 `json:"temperature_2m"`
-		WeatherCode int     `json:"weather_code"`
-	} `json:"current"`
-	Daily struct {
-		Max  []float64 `json:"temperature_2m_max"`
-		Min  []float64 `json:"temperature_2m_min"`
-		Rain []float64 `json:"precipitation_probability_max"`
-		Code []int     `json:"weather_code"`
-	} `json:"daily"`
-}
-
 func briefingWeather(t *Turn) (string, error) {
 	city := ""
 	if t.Settings != nil {
@@ -420,11 +369,8 @@ func briefingWeather(t *Turn) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("geocode: %w", err)
 	}
-	u := fmt.Sprintf("%s?latitude=%.4f&longitude=%.4f&current=temperature_2m,weather_code"+
-		"&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code"+
-		"&timezone=auto&forecast_days=1", openMeteoForecastURL, place.lat, place.lon)
-	var f briefingForecast
-	if err := httpGetJSON(t.Ctx, u, &f); err != nil {
+	f, err := fetchForecast(t.Ctx, place)
+	if err != nil {
 		return "", fmt.Errorf("forecast: %w", err)
 	}
 	return weatherSentence(t.Lang, place.name, f), nil
@@ -447,38 +393,6 @@ func degrees(v float64, lang string) string {
 		return fmt.Sprintf("minus %d %s", -n, unit)
 	}
 	return fmt.Sprintf("%d %s", n, unit)
-}
-
-func weatherSentence(lang, city string, f briefingForecast) string {
-	cond := wmoConditionDE(f.Current.WeatherCode)
-	if lang != "de" {
-		cond = wmoCondition(f.Current.WeatherCode)
-		if cond == "unknown conditions" {
-			cond = ""
-		}
-	}
-	var b strings.Builder
-	if lang == "de" {
-		fmt.Fprintf(&b, "In %s sind es %s", city, degrees(f.Current.Temperature, lang))
-	} else {
-		fmt.Fprintf(&b, "In %s it is %s", city, degrees(f.Current.Temperature, lang))
-	}
-	if cond != "" {
-		b.WriteString(", " + cond)
-	}
-	b.WriteString(".")
-	var day []string
-	if len(f.Daily.Max) > 0 {
-		day = append(day, pick(lang, "Today up to ", "Heute bis ")+degrees(f.Daily.Max[0], lang))
-	}
-	if len(f.Daily.Rain) > 0 && f.Daily.Rain[0] >= 10 {
-		p := int(math.Round(f.Daily.Rain[0]))
-		day = append(day, fmt.Sprintf(pick(lang, "%d percent chance of rain", "Regenrisiko %d Prozent"), p))
-	}
-	if len(day) > 0 {
-		b.WriteString(" " + strings.Join(day, ", ") + ".")
-	}
-	return b.String()
 }
 
 // wmoConditionDE is the German wording of a WMO weather code ("" unknown).
@@ -543,43 +457,18 @@ func briefingReminders(t *Turn) (string, error) {
 // Section 60: one news headline (only with briefingNews), then "Mehr
 // Schlagzeilen?"
 
-// briefingHeadlines fetches the top headlines in lang (only the language
-// goes to Google News).
+// briefingHeadlines fetches the top headlines in lang (realtime.go: the
+// Tagesschau for German, Google News otherwise; nothing personal is sent).
 func briefingHeadlines(ctx context.Context, lang string) ([]string, error) {
-	raw := getNewsTool(ctx, "", lang)
-	var items []struct {
-		Title string `json:"title"`
+	hs, _, err := fetchHeadlines(ctx, "", lang)
+	if err != nil {
+		return nil, fmt.Errorf("news: %w", err)
 	}
-	if err := json.Unmarshal([]byte(raw), &items); err != nil {
-		var e struct {
-			Error string `json:"error"`
-		}
-		_ = json.Unmarshal([]byte(raw), &e)
-		return nil, fmt.Errorf("news: %s", e.Error)
-	}
-	var out []string
-	for _, it := range items {
-		if h := cleanHeadline(it.Title); h != "" {
-			out = append(out, h)
-		}
+	out := make([]string, 0, len(hs))
+	for _, h := range hs {
+		out = append(out, h.Title)
 	}
 	return out, nil
-}
-
-// cleanHeadline drops the " - Source" suffix Google News appends and makes
-// the third-party text safe to speak (no URLs, controls or delimiters).
-func cleanHeadline(s string) string {
-	s = strings.ToValidUTF8(s, "")
-	if i := strings.LastIndex(s, " - "); i > 0 {
-		s = s[:i]
-	}
-	s = cleanText(s, 400)
-	s = urlPattern.ReplaceAllString(s, " ")
-	for strings.Contains(s, "<<<") || strings.Contains(s, ">>>") {
-		s = strings.ReplaceAll(strings.ReplaceAll(s, "<<<", ""), ">>>", "")
-	}
-	s = strings.Join(strings.Fields(s), " ")
-	return strings.TrimSpace(truncateRunes(s, 160))
 }
 
 func briefingNews(t *Turn) (string, error) {

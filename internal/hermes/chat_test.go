@@ -13,11 +13,11 @@ import (
 	"time"
 )
 
-// chatEnv isolates a chat test: temp settings, no Mistral, temp gen dir.
+// chatEnv isolates a chat test: temp settings, temp gen dir. The realtime
+// services point at a closed port unless a test fakes them (realtime_test).
 func chatEnv(t *testing.T) {
 	t.Helper()
 	useTempSettings(t)
-	t.Setenv("MISTRAL_API_KEY", "")
 	t.Setenv("GEN_DIR", t.TempDir())
 }
 
@@ -253,7 +253,7 @@ func TestLocalChatCancellationReachesOllama(t *testing.T) {
 	}
 }
 
-func TestChatRoutesImageSearchWithoutMistral(t *testing.T) {
+func TestChatDoesNotRouteCodeQuestionsToImageSearch(t *testing.T) {
 	chatEnv(t)
 	t.Setenv("OLLAMA_BASE", "http://127.0.0.1:1")
 	// "random gibberish" must reach the local model, not image search.

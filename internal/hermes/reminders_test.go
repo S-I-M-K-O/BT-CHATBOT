@@ -45,7 +45,6 @@ func remEnv(t *testing.T) *remClock {
 	withTestRegistry(t)
 	resetHub(t)
 	t.Setenv("OLLAMA_BASE", "http://127.0.0.1:1")
-	t.Setenv("MISTRAL_API_KEY", "")
 	s := defaultSettings()
 	s.Timezone = "Europe/Berlin"
 	if err := saveSettings(s); err != nil {

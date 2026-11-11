@@ -154,7 +154,7 @@ func TestTokenGuardBlocksLANWithoutToken(t *testing.T) {
 		"raw token cookie":  {method: http.MethodPost, path: "/api/settings", host: "192.168.1.50:8080", remote: lan, body: evil, cookie: "s3cret-token"},
 		"local proxy":       {method: http.MethodPost, path: "/api/settings", host: "hermes.lan", remote: "127.0.0.1:4000", body: evil},
 		"static page":       {path: "/", host: "192.168.1.50:8080", remote: lan},
-		"generated image":   {path: "/gen/hermes_1.png", host: "192.168.1.50:8080", remote: lan},
+		"gen image":         {path: "/gen/hermes_1.png", host: "192.168.1.50:8080", remote: lan},
 	} {
 		if w := q.do(h); w.Code != http.StatusUnauthorized {
 			t.Errorf("%s: got %d, want 401", name, w.Code)

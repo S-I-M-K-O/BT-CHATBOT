@@ -15,6 +15,10 @@
  *   docs      {hits:[{name,n,doc}]}                            docs.go
  *   link      {url,title,site,paywall}                         readlink.go
  *   memory    {id,text,person} or {id,deleted:true,person}     memory.go
+ *   weather   {city,rain,now?:{temp,feelsLike,code,condition,wind},
+ *              days:[{label,date,max,min,rain?,code,condition}]} realtime.go
+ *   news      {source:"tagesschau"|"googlenews",topic,
+ *              items:[{title,topline?}]}                       realtime.go
  *
  * Any other kind (person, undo, …) renders nothing here; other modules
  * handle those. Missing or malformed fields degrade to less detail.
@@ -119,6 +123,12 @@
       memory: "Memory",
       memorySaved: "Noted",
       memoryDeleted: "Removed from memory",
+      feelsLike: "feels like {n}°",
+      wind: "wind {n} km/h",
+      rainChance: "{n}% rain",
+      newsTopic: "News: {topic}",
+      src_tagesschau: "tagesschau.de",
+      src_googlenews: "Google News",
     },
     de: {
       briefing: "Dein Tag",
@@ -175,6 +185,12 @@
       memory: "Gedächtnis",
       memorySaved: "Gemerkt",
       memoryDeleted: "Aus dem Gedächtnis gelöscht",
+      feelsLike: "gefühlt {n}°",
+      wind: "Wind {n} km/h",
+      rainChance: "{n} % Regen",
+      newsTopic: "Nachrichten: {topic}",
+      src_tagesschau: "tagesschau.de",
+      src_googlenews: "Google News",
     },
   };
 
@@ -195,6 +211,7 @@
     docs: "📄",
     link: "🔗",
     memory: "🧠",
+    weather: "🌤️",
     calendarSec: "📅",
     remindersSec: "⏰",
     listsSec: "🛒",
@@ -353,6 +370,19 @@
     [/bewölkt|bedeckt|wolkig|cloud|overcast/i, "☁️"],
     [/klar|sonnig|heiter|clear|sunny|fair/i, "☀️"],
   ];
+
+  /* An icon for a WMO weather code (Open-Meteo weather_code). */
+  function wmoIcon(code) {
+    if (typeof code !== "number" || !isFinite(code)) return "🌡️";
+    if (code >= 95) return "⛈️";
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "❄️";
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return "🌧️";
+    if (code === 45 || code === 48) return "🌫️";
+    if (code === 3) return "☁️";
+    if (code === 1 || code === 2) return "⛅";
+    if (code === 0) return "☀️";
+    return "🌡️";
+  }
 
   /*
    * The current temperature and an icon from the weather section text
@@ -627,6 +657,58 @@
     return { kind: "memory", title: tr(o.lang, "memorySaved"), text: text, deleted: false };
   }
 
+  function intOrNull(v) {
+    return typeof v === "number" && isFinite(v) ? Math.round(v) : null;
+  }
+
+  function weatherModel(d, o) {
+    var city = cleanText(d.city, 80);
+    var now = null;
+    if (isObj(d.now) && intOrNull(d.now.temp) !== null) {
+      now = {
+        temp: intOrNull(d.now.temp),
+        feelsLike: intOrNull(d.now.feelsLike),
+        wind: intOrNull(d.now.wind),
+        condition: cleanText(d.now.condition, 40),
+        icon: wmoIcon(d.now.code),
+      };
+    }
+    var days = [];
+    arr(d.days, 7).forEach(function (x) {
+      if (!isObj(x)) return;
+      var max = intOrNull(x.max);
+      var min = intOrNull(x.min);
+      var label = cleanText(x.label, 30) || (typeof x.date === "string" ? dayLabel(x.date, "", o.lang) : "");
+      if (!label || (max === null && min === null)) return;
+      var rain = intOrNull(x.rain);
+      days.push({
+        label: label,
+        max: max,
+        min: min,
+        rain: rain !== null ? Math.max(0, Math.min(100, rain)) : null,
+        condition: cleanText(x.condition, 40),
+        icon: wmoIcon(x.code),
+      });
+    });
+    if (!now && !days.length) return null;
+    var title = city ? tr(o.lang, "weather") + " · " + city : tr(o.lang, "weather");
+    return { kind: "weather", title: title, now: now, days: days, rainFocus: d.rain === true, lang: o.lang };
+  }
+
+  function newsModel(d, o) {
+    var items = [];
+    arr(d.items, 10).forEach(function (x) {
+      if (!isObj(x) || items.length >= 5) return;
+      var title = cleanText(x.title, 200);
+      if (!title) return;
+      items.push({ title: title, topline: cleanText(x.topline, 80) });
+    });
+    if (!items.length) return null;
+    var topic = cleanText(d.topic, 60);
+    var src = d.source === "tagesschau" || d.source === "googlenews" ? tr(o.lang, "src_" + d.source) : "";
+    return { kind: "news", title: topic ? tr(o.lang, "newsTopic", { topic: topic }) : tr(o.lang, "news"), source: src, items: items };
+  }
+
   /*
    * The view model of a card, or null when there is nothing to show (unknown
    * kind, malformed data). opts: {lang:"de"|"en", now: ms}.
@@ -653,6 +735,10 @@
         return linkModel(data, o);
       case "memory":
         return memoryModel(data, o);
+      case "weather":
+        return weatherModel(data, o);
+      case "news":
+        return newsModel(data, o);
     }
     return null;
   }
@@ -675,6 +761,7 @@
     dayLabel: dayLabel,
     countdown: countdown,
     parseWeather: parseWeather,
+    wmoIcon: wmoIcon,
     safeHref: safeHref,
     findOpenItem: findOpenItem,
     model: model,
@@ -1061,7 +1148,61 @@
     return card;
   }
 
+  // ---------------------------------------------------------------- weather, news
+
+  function renderWeather(m) {
+    var card = shell(m, C.ICONS.weather);
+    if (m.now) {
+      var w = el("div", "hc-weather");
+      var big = el("span", "hc-wx-icon", m.now.icon);
+      big.setAttribute("aria-hidden", "true");
+      w.appendChild(big);
+      w.appendChild(el("span", "hc-wx-temp", m.now.temp + "°"));
+      var parts = [];
+      if (m.now.condition) parts.push(m.now.condition);
+      if (m.now.feelsLike !== null) parts.push(t("feelsLike", { n: m.now.feelsLike }));
+      if (m.now.wind !== null) parts.push(t("wind", { n: m.now.wind }));
+      w.appendChild(el("span", "hc-wx-text", parts.join(" · ")));
+      card.appendChild(w);
+    }
+    if (m.days.length) {
+      var ul = el("ul", "hc-wx-days");
+      m.days.forEach(function (d) {
+        var li = el("li", "hc-wx-day");
+        li.appendChild(el("span", "hc-wx-label", d.label));
+        var ic = el("span", "hc-wx-dicon", d.icon);
+        ic.setAttribute("aria-hidden", "true");
+        li.appendChild(ic);
+        var temps = (d.max !== null ? d.max + "°" : "–") + " / " + (d.min !== null ? d.min + "°" : "–");
+        li.appendChild(el("span", "hc-wx-range", temps));
+        var rest = [];
+        if (d.condition) rest.push(d.condition);
+        if (d.rain !== null) rest.push(t("rainChance", { n: d.rain }));
+        li.appendChild(el("span", "hc-wx-cond" + (m.rainFocus && d.rain !== null && d.rain >= 50 ? " hc-warn" : ""), rest.join(" · ")));
+        ul.appendChild(li);
+      });
+      card.appendChild(ul);
+    }
+    return card;
+  }
+
+  function renderNews(m) {
+    var card = shell(m, C.ICONS.news);
+    var ul = el("ul", "hc-news");
+    m.items.forEach(function (it) {
+      var li = el("li", "hc-news-item");
+      if (it.topline) li.appendChild(el("span", "hc-news-top", it.topline));
+      li.appendChild(el("span", "hc-news-title", it.title));
+      ul.appendChild(li);
+    });
+    card.appendChild(ul);
+    if (m.source) card.appendChild(el("div", "hc-via", m.source));
+    return card;
+  }
+
   var RENDER = {
+    weather: renderWeather,
+    news: renderNews,
     briefing: renderBriefing,
     calendar: renderCalendar,
     home: renderHome,

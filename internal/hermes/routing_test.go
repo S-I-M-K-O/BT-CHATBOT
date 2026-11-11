@@ -354,8 +354,8 @@ func TestRoutingCompoundGuards(t *testing.T) {
 	}
 }
 
-// Bare weather/news words used to send ordinary chats (and the whole history)
-// to the paid Mistral cloud call. These must stay on the local model.
+// Bare weather/news words must not turn ordinary chats into weather or news
+// reports. These must stay on the local model.
 func TestWantsRealtimeIgnoresTopicWordsInOrdinaryChat(t *testing.T) {
 	for _, q := range []string{
 		"Explain how rain forms",

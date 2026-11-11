@@ -12,6 +12,8 @@ Taskfile.yml
 tests
 bt-chatbot
 README.md
+docs
+THIRD_PARTY_NOTICES.md
 # The image gets freshly verified copies from the assets stage
 web/static/vendor
 .hermes-work

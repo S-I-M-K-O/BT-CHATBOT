@@ -30,7 +30,7 @@ import (
 //     always confirmed first.
 //   - Replies are templates (no LLM); every title goes through safeTitle.
 //     Calendar text reaches a prompt only through contextBlock (data
-//     delimiters) and never reaches Mistral.
+//     delimiters) and never leaves the machine.
 //   - Briefing section 30, personal-context section 31, GET /api/calendar/events.
 
 const (

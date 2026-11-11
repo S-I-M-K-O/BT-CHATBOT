@@ -22,7 +22,7 @@ import (
 //
 // Ways in:  explicit "merk dir …" (fast path / router tool), automatic
 //           extraction after persona turns (background queue), the panel API.
-// Ways out: the personal context section (local model only, never Mistral),
+// Ways out: the personal context section (local model only, never a cloud),
 //           "was weißt du über mich", the panel API and export.
 // Ways to delete: "vergiss …", the panel, person deletion (cascade), expiry.
 
@@ -1832,7 +1832,7 @@ var (
 // "stated" right after them may have been planted there (SPEC 8.3).
 func extractionSkipSource(src string) bool {
 	switch {
-	case src == "local:link", src == "local:docs", src == "fast:briefing":
+	case src == "local:link", src == "local:docs", src == "fast:briefing", src == "realtime:news":
 		return true
 	case strings.HasPrefix(src, "tool:calendar"), strings.HasPrefix(src, "fast:calendar"):
 		return true

@@ -19,8 +19,8 @@ import (
 	"unicode/utf8"
 )
 
-// chatMessage is what reaches Ollama and Mistral: role and content only, so
-// client-side tags can never leak into a model request.
+// chatMessage is what reaches Ollama: role and content only, so client-side
+// tags can never leak into a model request.
 type chatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
@@ -92,7 +92,8 @@ type attachmentPayload struct {
 type chatRequest struct {
 	Messages []reqMessage `json:"messages"`
 	// TimeZone is the browser's IANA zone (Intl.DateTimeFormat().
-	// resolvedOptions().timeZone). Optional; used by the get_time tool.
+	// resolvedOptions().timeZone). Optional; the turn's clock uses it when
+	// the household set no time zone.
 	TimeZone      string             `json:"timeZone"`
 	ClientID      string             `json:"clientId"`
 	Spoken        bool               `json:"spoken"`
@@ -330,42 +331,8 @@ func newTurn(r *http.Request, w http.ResponseWriter, s *Settings, req *chatReque
 	return t
 }
 
-// mistralSources are the replies Mistral itself produced: only those may go
-// back to the cloud as follow-up context.
-var mistralSources = wordSet("mistral", "image")
-
-// mistralMessages is the only history that may reach Mistral: the persona
-// prompt, the previous exchange only when Mistral answered it (for this
-// speaker, without an attachment), and the current query. Anything built
-// from private local data, and anything untagged, is dropped (Section 8.1).
-func mistralMessages(t *Turn) []chatMessage {
-	out := []chatMessage{{Role: "system", Content: effectiveSystemPrompt(t.Settings)}}
-	if n := len(t.Tagged); n >= 3 {
-		u, a := t.Tagged[n-3], t.Tagged[n-2]
-		if u.Role == "user" && a.Role == "assistant" &&
-			mistralSources[u.Src] && mistralSources[a.Src] &&
-			!u.Att && !a.Att && u.Sp == t.Speaker.ID && a.Sp == t.Speaker.ID {
-			out = append(out, chatMessage{Role: "user", Content: u.Content}, chatMessage{Role: "assistant", Content: a.Content})
-		}
-	}
-	return append(out, chatMessage{Role: "user", Content: t.Query})
-}
-
-// logMistralShape logs only the number and roles of the messages that leave
-// the machine (HERMES_DEBUG_MISTRAL=1), never their content.
-func logMistralShape(kind string, msgs []chatMessage) {
-	if !envBool("HERMES_DEBUG_MISTRAL") {
-		return
-	}
-	roles := make([]string, len(msgs))
-	for i, m := range msgs {
-		roles[i] = m.Role
-	}
-	log.Printf("mistral %s: %d messages [%s]", kind, len(msgs), strings.Join(roles, ","))
-}
-
 // carriesAttachment: the turn reads a link. Such turns never reach the
-// router or Mistral, whatever the fast paths did with them.
+// router or the realtime services, whatever the fast paths did with them.
 func (t *Turn) carriesAttachment() bool {
 	if t.Attachment != nil {
 		return true
@@ -439,35 +406,37 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// The older handlers below build their stream with newSSE(w); tw hands
-	// them this turn's stream.
+	// The image search handler builds its stream with newSSE(w); tw hands
+	// it this turn's stream.
 	tw := &turnWriter{ResponseWriter: w, t: t}
 	kind := classifyImageRequest(t.Query)
-	// 4: Mistral handles image generation and real-time queries (weather,
-	// time, news), seeing only the allowlisted messages (Section 8.1).
-	// Everything else stays on the local Ollama model.
-	if mistralEnabled() && !t.carriesAttachment() {
+	if !t.carriesAttachment() {
+		// 4: there is no image generator: say so (and what works instead)
+		// rather than letting the local model pretend to draw.
 		if kind == "generate" {
-			t.handledBy = "image"
-			logMistralShape("image", []chatMessage{{Role: "user", Content: t.Query}})
-			handleMistralImage(r.Context(), tw, s, t.Query)
+			t.handledBy = "kb"
+			text := pick(t.Lang,
+				"I can't draw pictures, but I can search the web for some. Say, for example: \"Show me pictures of lighthouses.\"",
+				"Bilder malen kann ich nicht, aber ich kann im Internet nach Bildern suchen. Sag zum Beispiel: „Zeig mir Bilder von Leuchttürmen.“")
+			sse.reply(text)
+			runAfterTurn(t, text)
 			return
 		}
-		if wantsRealtime(t.Query) {
-			t.handledBy = "mistral"
-			cloud := mistralMessages(t)
-			logMistralShape("chat", cloud)
-			handleMistralTools(r.Context(), tw, s, cloud, req.TimeZone)
+		// 5: weather, time and news, answered locally from Open-Meteo, the
+		// clock and the news feeds (realtime.go). Only the city or the
+		// topic leaves the machine, never the history.
+		if req, ok := realtimeIntent(t); ok {
+			runRealtime(t, req)
 			return
 		}
 	}
-	// 5: internet image search needs no API key.
+	// 6: internet image search needs no API key.
 	if kind == "search" && !t.carriesAttachment() {
 		t.handledBy = "image"
 		handleImageSearch(r.Context(), tw, s, t.Query)
 		return
 	}
-	// 6: persona chat, no tools, with the personal context. After a reply
+	// 7: persona chat, no tools, with the personal context. After a reply
 	// built from a page, a document or the calendar only the speaker and
 	// honesty lines go in: untrusted text in the history must not share a
 	// prompt with personal data (SPEC 8.3).

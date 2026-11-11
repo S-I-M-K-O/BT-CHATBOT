@@ -28,7 +28,6 @@ func peopleEnv(t *testing.T) *time.Time {
 	withTestRegistry(t)
 	useTempData(t)
 	useTempSettings(t)
-	t.Setenv("MISTRAL_API_KEY", "")
 	t.Setenv("OLLAMA_BASE", "http://127.0.0.1:1") // no persona chat in these tests
 	mc, os2, mo, rr := memoryCountProvider, ownerMemoryStatsProvider, migrateOwnerMemoriesProvider, reassignRecentMemoriesProvider
 	memoryCountProvider, ownerMemoryStatsProvider, migrateOwnerMemoriesProvider, reassignRecentMemoriesProvider = nil, nil, nil, nil

@@ -6,10 +6,11 @@ import (
 	"unicode"
 )
 
-// This file decides where a user message is routed: the real-time Mistral
-// agent (weather / time / news), image generation, internet image search, or
-// the local model. Everything works on whole words so that "brain" is not
-// "rain", "update" is not "date" and "photosynthesis" is not a photo.
+// This file decides where a user message is routed: the local real-time
+// answers (weather / time / news, realtime.go), internet image search, the
+// "I cannot draw" notice for image generation requests, or the local model.
+// Everything works on whole words so that "brain" is not "rain", "update" is
+// not "date" and "photosynthesis" is not a photo.
 
 // tokenize lowercases s and splits it into words made of letters and digits
 // (Unicode aware, so umlauts and ß stay inside their words).
@@ -65,58 +66,75 @@ func wordSet(words ...string) map[string]bool {
 	return m
 }
 
-// A real-time match sends the message (and some context) to the Mistral
-// cloud as a paid call, so the router only fires on questions about live
-// data. Bare topic words ("rain", "news", "Nebel") are not enough: "Explain
+// A real-time match sends the city or topic to a public data service
+// (Open-Meteo, the news feeds) and answers from a template, so the router
+// only fires on questions about live data. Bare topic words ("rain", "news", "Nebel") are not enough: "Explain
 // how rain forms" or "Ich habe Nachrichten von meiner Mutter" stay local.
 
-// realtimePhrases are live-data questions that trigger the Mistral real-time
-// agent on their own (unless a task veto applies). Single words match whole
-// tokens; multi-word entries match consecutive tokens.
-var realtimePhrases = []string{
-	// English — weather
+// The realtime phrase groups are live-data questions that are answered by
+// realtime.go on their own (unless a task veto applies). Single words match
+// whole tokens; multi-word entries match consecutive tokens. The group a
+// question matches also decides what kind of answer it gets.
+var realtimeWeatherPhrases = []string{
+	// English
 	"weather", "degrees outside", "how hot", "how cold", "how warm",
 	"freezing outside", "how windy", "how humid", "how sunny", "how cloudy",
 	"is it raining", "is it snowing", "is it sunny", "is it windy",
 	"is it cloudy", "is it humid", "is it foggy", "is it stormy",
 	"is it hailing", "is it freezing",
-	// English — time / date
-	"what time", "time is it", "current time", "local time", "time zone",
-	"timezone", "tell me the time", "s the time", "is the time", "the time now",
-	"what date", "date today", "today s date", "current date", "s the date",
-	"is the date", "the date today",
-	"what day", "which day", "day is it", "day of the week",
-	"what year is it", "which year is it", "year is it", "current year",
-	// English — news
-	"breaking news", "current events", "any news", "latest news",
-	"latest headlines", "top news", "top headlines", "today s news",
-	"today s headlines", "what s in the news", "what is in the news",
-	"anything in the news",
-	// Deutsch — Wetter
+	// Deutsch
 	"wetter", "wetterbericht", "wie viel grad", "wieviel grad", "grad draußen",
 	"grad draussen", "grad hat", "wie warm", "wie kalt", "wie windig",
 	"regnet es", "schneit es", "hagelt es", "stürmt es", "stuermt es",
 	"ist es windig", "ist es sonnig", "ist es bewölkt", "ist es bewoelkt",
 	"ist es neblig", "ist es stürmisch", "ist es stuermisch",
-	// Deutsch — Zeit / Datum
-	"wie viel uhr", "wieviel uhr", "wie spät", "wie spaet", "uhrzeit",
-	"welches datum", "das datum", "heutige datum", "heutiges datum",
-	"datum heute", "datum von heute", "wochentag", "welcher tag",
-	"heute für ein tag", "heute fuer ein tag", "welches jahr", "jahr haben wir",
-	// Deutsch — Nachrichten
-	"was gibt s neues", "was gibts neues", "was gibt es neues",
-	"aktuelle nachrichten", "aktuellen nachrichten", "neueste nachrichten",
-	"neuesten nachrichten", "heutigen nachrichten",
 	// Clothing questions are about today's weather.
 	"need an umbrella", "need a jacket", "need a coat", "bring an umbrella",
 	"bring a jacket", "brauche ich einen regenschirm", "brauch ich einen regenschirm",
 	"brauche ich einen schirm", "brauche ich eine jacke",
 }
 
+var realtimeTimePhrases = []string{
+	"what time", "time is it", "current time", "local time", "time zone",
+	"timezone", "tell me the time", "s the time", "is the time", "the time now",
+	"wie viel uhr", "wieviel uhr", "wie spät", "wie spaet", "uhrzeit",
+}
+
+var realtimeDatePhrases = []string{
+	"what date", "date today", "today s date", "current date", "s the date",
+	"is the date", "the date today",
+	"what day", "which day", "day is it", "day of the week",
+	"what year is it", "which year is it", "year is it", "current year",
+	"welches datum", "das datum", "heutige datum", "heutiges datum",
+	"datum heute", "datum von heute", "wochentag", "welcher tag",
+	"heute für ein tag", "heute fuer ein tag", "welches jahr", "jahr haben wir",
+}
+
+var realtimeNewsPhrases = []string{
+	"breaking news", "current events", "any news", "latest news",
+	"latest headlines", "top news", "top headlines", "today s news",
+	"today s headlines", "what s in the news", "what is in the news",
+	"anything in the news",
+	"was gibt s neues", "was gibts neues", "was gibt es neues",
+	"aktuelle nachrichten", "aktuellen nachrichten", "neueste nachrichten",
+	"neuesten nachrichten", "heutigen nachrichten",
+}
+
+// realtimePhrases is every group: any of them makes a live-data question.
+var realtimePhrases = concatPhrases(realtimeWeatherPhrases, realtimeTimePhrases, realtimeDatePhrases, realtimeNewsPhrases)
+
+func concatPhrases(groups ...[]string) []string {
+	var out []string
+	for _, g := range groups {
+		out = append(out, g...)
+	}
+	return out
+}
+
 // realtimeTopicWords name weather topics. They count only together with a
 // time or place anchor ("snow tomorrow", "temperature in Paris") or right
 // after a question opener ("what's the forecast"). Without one, "Jon Snow",
-// "Rain Man" or "Nebel des Krieges" would cost a paid real-time call.
+// "Rain Man" or "Nebel des Krieges" would get a weather report.
 var realtimeTopicWords = []string{
 	"forecast", "rain", "raining", "rainy", "snow", "snowing", "snowy", "wind",
 	"windy", "humidity", "humid", "sunny", "cloudy", "celsius", "fahrenheit",
