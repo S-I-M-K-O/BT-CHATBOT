@@ -624,6 +624,11 @@ func announceReminder(r *Reminder, repeat int, now time.Time) int64 {
 		"late":       repeat == 0 && now.Sub(r.Due) > reminderLateAfter,
 		"recurring":  r.Rule != nil,
 	}
+	// No device has "speak here" on: the leader tab speaks anyway, so a
+	// reminder is never just a silent line in the chat.
+	if _, _, speakHere := hubSubscribers(); speakHere == 0 {
+		data["noSpeaker"] = true
+	}
 	if r.Rule != nil && !r.Private {
 		data["ruleText"] = r.Rule.Describe(reminderLang(r))
 	}
@@ -1294,7 +1299,7 @@ func setReply(t *Turn, r Reminder, now time.Time, recurring bool) string {
 		s += pick(t.Lang, " I didn't understand how it should repeat, so this one rings once.",
 			" Wie sie sich wiederholen soll, habe ich nicht verstanden, deshalb kommt sie einmal.")
 	}
-	if _, _, speakHere := hubSubscribers(); speakHere == 0 {
+	if full, _, _ := hubSubscribers(); full == 0 {
 		s += pick(t.Lang, " Note: I can only announce it while HERMES is open in a browser tab.",
 			" Achtung: Ansagen gibt es nur, solange HERMES in einem Browser-Tab offen ist.")
 	}
