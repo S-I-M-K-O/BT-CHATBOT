@@ -640,11 +640,40 @@
 
   // ---------------------------------------------------------------- the view
 
+  /* "Einkaufsliste" → "einkaufsliste", "To-do list" → "to-do-list" */
+  function slug(s) {
+    return String(s || "")
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "-");
+  }
+
+  var PATH_ALIASES = {
+    todo: "todo", "to-do": "todo", todos: "todo", "todo-list": "todo", "to-do-list": "todo", todolist: "todo",
+    aufgaben: "todo", "to-do-liste": "todo", "todo-liste": "todo",
+    shopping: "shopping", shoppinglist: "shopping", "shopping-list": "shopping", einkauf: "shopping",
+    einkaufen: "shopping", einkaufsliste: "shopping",
+  };
+
+  /* The list named by the address /lists/<name> (standalone page only). */
+  function pathList() {
+    if (!standalone) return "";
+    var m = /^\/lists\/([^\/]+)\/?$/.exec(window.location.pathname || "");
+    if (!m) return "";
+    var name;
+    try {
+      name = slug(decodeURIComponent(m[1]));
+    } catch (e) {
+      return "";
+    }
+    return PATH_ALIASES[name] || "name:" + name;
+  }
+
   function createView(root) {
     var state = {
       rev: null,
       lists: [],
-      current: storeGet(CURRENT_KEY) || "shopping",
+      current: pathList() || storeGet(CURRENT_KEY) || "shopping",
       loaded: false,
       offline: false,
       noAccess: false,
@@ -689,6 +718,14 @@
       state.lists = lists;
       state.rev = typeof data.rev === "number" ? data.rev : 0;
       state.loaded = true;
+      if (state.current.indexOf("name:") === 0) {
+        // /lists/<name> of a list of the user's own: match it by name
+        var want = state.current.slice(5);
+        state.current = "";
+        lists.forEach(function (l) {
+          if (!state.current && slug(L.listName(l, lang())) === want) state.current = l.id;
+        });
+      }
       if (!currentList() || currentList().id !== state.current) {
         state.current = lists.length ? lists[0].id : "shopping";
       }

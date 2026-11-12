@@ -467,6 +467,8 @@ func listsPathAllowed(r *http.Request) bool {
 		return true
 	case p == "/api/events":
 		return get && r.URL.Query().Get("scope") == "lists"
+	case p == "/lists" || (strings.HasPrefix(p, "/lists/") && !strings.Contains(p[len("/lists/"):], "/")):
+		return get
 	case listsStaticPaths[p], strings.HasPrefix(p, "/favicon"):
 		return get
 	}

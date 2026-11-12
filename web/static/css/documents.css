@@ -1,0 +1,158 @@
+/* HERMES documents page (/documents). Same tokens as the phone list page. */
+body[data-page="documents"] {
+  --bg: #0b1017;
+  --panel: #141b26;
+  --panel2: #0e151f;
+  --accent: #ff6a00;
+  --accent-soft: rgba(255, 106, 0, 0.16);
+  --text: #d8e1ec;
+  --muted: #94a9be;
+  --border: #223042;
+  --border-hi: #34465c;
+  --ok: #30a46c;
+  --warn: #f5a524;
+  --danger: #e5484d;
+  --radius: 10px;
+  color-scheme: dark;
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+.dp {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: max(20px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+.dp-title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 0 0 6px;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+.dp-hint {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.dp-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 26px 16px;
+  border: 2px dashed var(--border-hi);
+  border-radius: var(--radius);
+  background: var(--panel2);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 150ms, background 150ms;
+}
+.dp-drop.over,
+.dp-drop:focus-within {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.dp-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.dp-btn {
+  display: inline-block;
+  min-height: 44px;
+  line-height: 44px;
+  padding: 0 22px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.dp-drop-hint {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.dp-log,
+.dp-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.dp-log-item {
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  background: var(--panel);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.dp-log-item.ok {
+  color: var(--ok);
+}
+.dp-log-item.warn {
+  color: var(--warn);
+}
+.dp-sub {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 26px 0 0;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.dp-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.dp-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.dp-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.dp-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.dp-del {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--danger);
+  font: inherit;
+  cursor: pointer;
+}
+.dp-del:hover,
+.dp-del:focus-visible {
+  border-color: var(--danger);
+}
+.dp-empty {
+  padding: 14px 4px;
+  color: var(--muted);
+}
+.dp-empty.warn,
+.dp-note {
+  color: var(--warn);
+}
