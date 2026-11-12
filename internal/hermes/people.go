@@ -575,6 +575,15 @@ func resolvePeopleSpeaker(t *Turn, v *VoiceInput, claimedID, claimedSource strin
 	named := func(id, source string) Speaker { return Speaker{ID: id, Name: byID[id].Name, Source: source} }
 	claimedOK := claimedID != "" && byID[claimedID] != nil
 
+	// 1b: one person, no enrolled voice, no PIN lock: nothing can tell a
+	// visitor apart from them (voice ID has no voiceprint to match, and
+	// the chip is the only other way), so this is single-user mode in all
+	// but the memory scope: everything is theirs. An enrolled voice, a
+	// second person or the personal lock ends this.
+	if len(people) == 1 && people[0].Voice == nil && !s.PersonalLock {
+		return named(people[0].ID, SourceSingle)
+	}
+
 	// 2: a valid voice and enrolled people: the voice decides.
 	if v != nil && s.VoiceIDEnabled && len(v.Emb) == voiceDim && (v.Model == "" || v.Model == voiceModelID) && v.Sec >= s.VoiceIDMinSec {
 		if scores := scoreSpeakers(v, people); len(scores) > 0 {

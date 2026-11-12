@@ -351,6 +351,29 @@ func TestResolveSpeakerRules(t *testing.T) {
 	check("expired claim", nil, turnOpt{}, "", SourceGuest)
 }
 
+// One person without an enrolled voice: nothing can tell a visitor apart, so
+// that person is the speaker (like single-user mode). A second person, an
+// enrolled voice or the personal lock end it.
+func TestSoleUnenrolledPersonIsTheSpeaker(t *testing.T) {
+	peopleEnv(t)
+	solo := addPerson(t, "Szymon", true, nil)
+	check := func(name string, o turnOpt, id, source string) {
+		t.Helper()
+		tr, _ := newPeopleTurn("hi", nil, o)
+		if tr.Speaker.ID != id || tr.Speaker.Source != source {
+			t.Errorf("%s: got %+v, want %s/%s", name, tr.Speaker, id, source)
+		}
+		if id != "" && (!tr.Can(AccessRead) || !tr.Can(AccessWrite)) {
+			t.Errorf("%s: the sole person must be able to read and write", name)
+		}
+	}
+	check("sole person", turnOpt{}, solo, SourceSingle)
+	check("sole person, voice expected", turnOpt{expected: true}, solo, SourceSingle)
+	check("personal lock", turnOpt{settings: func(s *Settings) { s.PersonalLock = true }}, "", SourceGuest)
+	addPerson(t, "Ben", true, nil)
+	check("two people", turnOpt{}, "", SourceGuest)
+}
+
 // ---------------------------------------------------------------------------
 // Voice enrolment (4.6)
 
