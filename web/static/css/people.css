@@ -438,16 +438,31 @@ button.pp-danger {
 .spk[hidden] {
   display: none;
 }
+/* same box as the mic button, the message field and the buttons around it
+   in the composer: 42px high, 10px radius, 1px border, 14px text */
+.composer .spk {
+  flex: none;
+}
 .spk-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  box-sizing: border-box;
+  height: 42px;
   max-width: 180px;
-  padding: 4px 8px 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
   color: var(--muted);
   background: var(--panel2);
+  cursor: pointer;
+}
+.spk-chip:hover,
+.spk-chip:focus-visible {
+  border-color: var(--border-hi);
+  outline: none;
 }
 .spk-dot {
   flex: none;
@@ -551,6 +566,7 @@ button.pp-danger {
   }
   .spk-chip {
     max-width: 130px;
+    padding: 0 8px 0 10px;
   }
 }
 

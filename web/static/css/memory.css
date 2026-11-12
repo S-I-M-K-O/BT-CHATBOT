@@ -22,6 +22,18 @@
   min-width: 0;
   transition: border-color var(--t-fast) var(--ease);
 }
+/* one height for every field: native selects otherwise render shorter or
+   taller than the text and date inputs next to them */
+.mem select,
+.mem input[type="search"],
+.mem input[type="date"] {
+  box-sizing: border-box;
+  height: 34px;
+  line-height: 20px;
+}
+.mem textarea {
+  box-sizing: border-box;
+}
 .mem select:focus,
 .mem input:focus,
 .mem textarea:focus {
@@ -222,12 +234,14 @@
   margin-top: 6px;
 }
 .mem-controls select {
-  padding: 4px 6px;
-  font-size: 12px;
-  max-width: 150px;
+  flex: 1 1 140px;
+  min-width: 120px;
+  max-width: 220px;
 }
 .mem-controls button {
-  padding: 4px 10px;
+  box-sizing: border-box;
+  height: 34px;
+  padding: 0 12px;
   font-size: 12px;
 }
 .mem-pin.is-on {
