@@ -66,7 +66,7 @@ const (
 	memoryContextAll   = 15   // up to this many, inject everything
 	memoryContextTop   = 8
 	memoryContextPins  = 5
-	memoryRecallMax    = 8
+	memoryRecallMax    = 12
 )
 
 var memoryKinds = wordSet("identity", "preference", "relationship", "date", "plan", "health", "home", "other")
@@ -1698,6 +1698,13 @@ func runRecall(t *Turn, _ json.RawMessage) Reply {
 		used = append(used, m.ID)
 	}
 	noteUsage(used)
+	if memoryRecallSummary && len(mine) > 0 {
+		facts := append([]string{}, mine...)
+		for _, f := range shared {
+			facts = append(facts, pick(t.Lang, "(household) ", "(Haushalt) ")+f)
+		}
+		return memorySummaryReply(t, facts, "")
+	}
 	var b strings.Builder
 	if len(mine) > 0 {
 		b.WriteString(pick(t.Lang, "Here's what I know about you: ", "Ich weiß über dich: "))
@@ -1809,6 +1816,7 @@ type extractJob struct {
 	Scope    string // memory scope of the speaker ("p_…" or "_owner")
 	Name     string // how facts name the speaker
 	ClientID string
+	Speaker  string // speaker id: only they can answer the "Soll ich mir das merken?" offer
 	Text     string // the user's message only, never the reply (SPEC 8.3)
 	Lang     string // language of the message
 	Enqueued time.Time
@@ -1901,7 +1909,7 @@ func memoryAfterTurn(t *Turn, _ string) {
 	}
 	lang := detectLang(t.Query, t.Lang)
 	job := extractJob{
-		Scope: t.MemoryScope(), Name: speakerLabel(t, lang), ClientID: t.ClientID,
+		Scope: t.MemoryScope(), Name: speakerLabel(t, lang), ClientID: t.ClientID, Speaker: t.Speaker.ID,
 		Text: truncateRunes(t.Query, 2000), Lang: lang, Enqueued: time.Now(),
 	}
 	select {
@@ -2194,6 +2202,8 @@ func processExtraction(ctx context.Context, job extractJob) ([]Memory, error) {
 	exclude := nameExclusions(append([]string{job.Name}, genericUserNames...)...)
 	today := memoryToday(s)
 	var saved []Memory
+	var offers []memoryOffer
+	defer func() { offerMemories(job, offers) }()
 	skip := map[string]bool{}
 	for i, f := range facts {
 		if i >= 3 {
@@ -2223,6 +2233,11 @@ func processExtraction(ctx context.Context, job extractJob) ([]Memory, error) {
 		}
 		scope := targetScope(job.Scope, f)
 		text := endSentence(f.Fact)
+		if memoryAskFirst && job.ClientID != "" {
+			offers = append(offers, memoryOffer{Text: text, Scope: scope, Kind: f.Kind, Lang: job.Lang,
+				Expires: expires, Replaces: strings.TrimSpace(f.Replaces)})
+			continue
+		}
 		// replaces only within the fact's own scope: a personal fact never
 		// overwrites a household entry (or the other way round).
 		if old, ok := visible[strings.TrimSpace(f.Replaces)]; ok && !skip[old.ID] && old.Person == scope {

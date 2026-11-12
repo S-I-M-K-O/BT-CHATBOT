@@ -428,6 +428,9 @@ func handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 	// Other open tabs pick up the new voice / interface language without a
 	// reload (the same event a hermes.conf change sends).
 	hubPublish("settings.changed", "", map[string]string{"source": "ui"})
+	if lang := contentLangChange(prev, &s); lang != "" && translateOnSwitch {
+		go translateContent(lang)
+	}
 	writeJSON(w, http.StatusOK, settingsWithManaged(&s))
 }
 

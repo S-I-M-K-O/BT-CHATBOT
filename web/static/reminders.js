@@ -405,6 +405,7 @@
       clientId: typeof d.clientId === "string" ? d.clientId.slice(0, 40) : "",
       missed: ev.missed === true,
       recurring: d.recurring === true,
+      noSpeaker: d.noSpeaker === true,
       ruleText: cleanStr(d.ruleText, RULE_TEXT_MAX),
     };
     // a private event never carries its text (SPEC 3.2); drop it if it does
@@ -534,7 +535,8 @@
     var plan = { notice: false, speak: false, chime: false, defer: false, notify: false, ack: false };
     if (!due || !ctx || !ctx.claimed || !ctx.fresh) return plan;
     plan.notice = true;
-    var audible = !!ctx.speakHere;
+    // no device in the household speaks reminders: the tab that claimed it does
+    var audible = !!ctx.speakHere || due.noSpeaker === true;
     // quiet hours never mute what the user (or their calendar) asked for
     if (ctx.quiet && EXPLICIT_KINDS.indexOf(due.kind) < 0) audible = false;
     if (due.missed && (ctx.missedSpoken || 0) >= MISSED_SPEAK_MAX) audible = false;

@@ -16,6 +16,9 @@ func useTempSettings(t *testing.T) string {
 	t.Helper()
 	p := filepath.Join(t.TempDir(), "nested", "settings.json")
 	t.Setenv("SETTINGS_FILE", p)
+	tr := translateOnSwitch
+	translateOnSwitch = false // no model to translate with in tests
+	t.Cleanup(func() { translateOnSwitch = tr })
 	return p
 }
 

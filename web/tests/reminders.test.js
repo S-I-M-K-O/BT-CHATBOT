@@ -802,3 +802,14 @@ test("browser: a series notice shows the rule; Erledigt names the occurrence; th
   assert.equal(b.calls.filter((c) => c[0] === "say").length, 2);
   assert.match(b.notices[0].text, /erledigt$/, "the old notice stays settled");
 });
+
+test("deliveryPlan: no speak-here device anywhere: the claiming tab speaks anyway", () => {
+  const d = R.normalizeDue({ id: 5, type: "reminder.due", data: { reminderId: "r_abcdef123456", text: "Wasser", noSpeaker: true } });
+  assert.equal(d.noSpeaker, true);
+  const quiet = Object.assign({}, BASE, { speakHere: false });
+  const plan = R.deliveryPlan(d, quiet);
+  assert.equal(plan.speak, true);
+  assert.equal(plan.ack, true);
+  const off = R.normalizeDue({ id: 6, type: "reminder.due", data: { reminderId: "r_abcdef123456", text: "Wasser" } });
+  assert.equal(R.deliveryPlan(off, quiet).speak, false);
+});

@@ -39,6 +39,11 @@ func memEnv(t *testing.T) *memPeople {
 	useTempSettings(t)
 	withTestRegistry(t)
 	resetEmbedState()
+	askFirst := memoryAskFirst
+	memoryAskFirst = false // the extraction tests check saving; memory_offer_test.go covers asking
+	summary := memoryRecallSummary
+	memoryRecallSummary = false // the recall tests check the plain listing
+	t.Cleanup(func() { memoryAskFirst, memoryRecallSummary = askFirst, summary })
 	t.Setenv("OLLAMA_BASE", "http://127.0.0.1:1")
 	people := &memPeople{m: map[string]string{"p_anna": "Anna", "p_ben": "Ben"}}
 	personExistsProvider = func(id string) bool {

@@ -1260,7 +1260,62 @@
     H.registerSettingsSection({ id: "memory", order: 20, title: { en: M.STRINGS.en.section, de: M.STRINGS.de.section }, mount: mountSection });
   }
 
+  /*
+   * "Soll ich mir das merken? …": the extractor found a fact in what this
+   * device's user said. The event carries no text; fetch the question, show
+   * it with Ja / Nein, speak it and listen for the answer. The answer is an
+   * ordinary chat turn ("ja"), which resolves the server's pending confirm.
+   */
+  var offerShown = 0;
+  function onOffer(ev) {
+    var d = ev && ev.data;
+    if (!d || d.clientId !== clientId()) return;
+    var now = Date.now();
+    if (now - offerShown < 2000) return; // relayed twice
+    offerShown = now;
+    var a = api();
+    if (typeof a.fetchJSON !== "function") return;
+    a.fetchJSON("/api/memory/offer?clientId=" + encodeURIComponent(clientId())).then(
+      function (res) {
+        var q = res && typeof res.question === "string" ? res.question.slice(0, 600) : "";
+        if (!q) return;
+        var handle = null;
+        var answered = false;
+        function answer(word) {
+          if (answered) return;
+          answered = true;
+          try {
+            if (handle && handle.update) handle.update(q, []);
+          } catch (e) {
+            /* ignore */
+          }
+          if (typeof a.send === "function") a.send(word);
+        }
+        var de = lang() === "de";
+        if (typeof a.addNotice === "function") {
+          handle = a.addNotice(q, {
+            kind: "memory",
+            actions: [
+              { label: de ? "Ja" : "Yes", fn: function () { answer(de ? "ja" : "yes"); } },
+              { label: de ? "Nein" : "No", fn: function () { answer(de ? "nein" : "no"); } },
+            ],
+          });
+        }
+        var spoken = typeof a.say === "function" ? a.say(q) : null;
+        if (typeof a.armFollowUp === "function") {
+          Promise.resolve(spoken).then(function () {
+            if (!answered) a.armFollowUp(10000);
+          });
+        }
+      },
+      function () {
+        /* gone or locked: nothing to ask */
+      }
+    );
+  }
+
   H.on("hub:memory.saved", onSaved);
+  H.on("hub:memory.offer", onOffer);
   H.on("card", onCard);
   function refreshIfVisible() {
     if (view && state.visible) load();
