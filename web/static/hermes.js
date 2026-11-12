@@ -29,6 +29,7 @@
     "reminder.acked",
     "checkin.meeting",
     "memory.saved",
+    "memory.offer",
     "people.changed",
     "list.changed",
     "reminders.changed",

@@ -135,8 +135,8 @@ func contextSpeakerLine(t *Turn) string {
 // must never claim to have done anything.
 func contextHonestyLine(t *Turn) string {
 	return pick(t.Lang,
-		"Note: In this conversation you cannot perform any actions (no timers, reminders, lists, calendar entries, devices). Never claim to have done, added or set anything. If the user wants something like that, briefly tell them how to phrase it, e.g. \"Remind me in 20 minutes to …\".",
-		"Hinweis: In diesem Gespräch kannst du keine Aktionen ausführen (keine Timer, Erinnerungen, Listen, Kalendereinträge, Geräte). Behaupte nie, etwas erledigt, eingetragen oder eingestellt zu haben. Wenn der Nutzer so etwas möchte, sag ihm kurz, wie er es formulieren kann, z. B. „Erinnere mich in 20 Minuten an …“.")
+		"Note: In this conversation you cannot perform any actions (no timers, reminders, lists, calendar entries, devices). Never claim to have done, added or set anything, and never say you noted, recorded or saved something in your memory (HERMES asks the user separately whether to remember it). If the user wants something like that, briefly tell them how to phrase it, e.g. \"Remind me in 20 minutes to …\", \"Which lists are there?\", \"Which documents do you have?\" or \"Remember that …\".",
+		"Hinweis: In diesem Gespräch kannst du keine Aktionen ausführen (keine Timer, Erinnerungen, Listen, Kalendereinträge, Geräte). Behaupte nie, etwas erledigt, eingetragen oder eingestellt zu haben, und sag nie, du hättest dir etwas notiert, gespeichert oder gemerkt (HERMES fragt den Nutzer gesondert, ob er es sich merken soll). Wenn der Nutzer so etwas möchte, sag ihm kurz, wie er es formulieren kann, z. B. „Erinnere mich in 20 Minuten an …“, „Welche Listen gibt es?“, „Welche Dokumente hast du?“ oder „Merk dir, dass …“.")
 }
 
 // contextLineMax bounds one stored line inside a data block.
