@@ -1426,9 +1426,10 @@ var (
 		"message", "messages", "handy", "phone", "leben", "life", "kopf", "head", "herz", "heart")
 	docsPossessives = wordSet("mein", "meine", "meinem", "meiner", "meinen", "meines", "unser", "unsere", "unserem",
 		"unserer", "unseren", "my", "our")
-	docsArticles    = wordSet("im", "dem", "der", "the")
+	docsArticles    = wordSet("im", "dem", "der", "das", "den", "dieses", "diesem", "the", "this")
 	docsVerbsDeny   = wordSet("lösch", "lösche", "losch", "losche", "entferne", "entfern", "delete", "remove", "schreib", "schreibe", "notier", "notiere", "füg", "füge", "add", "write", "speicher", "speichere", "save", "upload", "hochladen", "lade")
-	docsAskStarters = wordSet("was", "wo", "wie", "wann", "wer", "welche", "welcher", "welches", "steht", "stehen", "sagt", "gibt", "what", "where", "how", "when", "who", "which", "does", "do", "is", "tell", "sag", "lies", "read", "such", "suche", "find", "finde", "search", "check", "schau", "look", "gibt", "erzähl", "erzahl")
+	docsAskStarters = wordSet("was", "wo", "wie", "wann", "wer", "welche", "welcher", "welches", "steht", "stehen", "sagt", "gibt", "what", "where", "how", "when", "who", "which", "does", "do", "is", "tell", "sag", "lies", "read", "such", "suche", "find", "finde", "search", "check", "schau", "look", "gibt", "erzähl", "erzahl",
+		"fasse", "fass", "zusammenfassen", "worum", "erkläre", "erklär", "summarize", "summarise", "summary", "explain")
 )
 
 func docNounLike(word string) bool {
@@ -1569,6 +1570,22 @@ func runDocsAsk(t *Turn, raw json.RawMessage) Reply {
 			"Du hast noch keine Dokumente hinzugefügt. Du kannst sie in der Zentrale unter Dokumente hochladen.")}
 	}
 	hits := docsSearch(t.Ctx, t.Settings, q, allow, docsTopK)
+	// a question about one named document (or the only one) reads that
+	// document: its best excerpts, else its beginning ("what is in it?")
+	if d, lead, ok := docsTarget(t, q); ok {
+		var own []docHit
+		for _, h := range hits {
+			if h.Doc == d.ID {
+				own = append(own, h)
+			}
+		}
+		if len(own) == 0 && lead {
+			own = docLeadHits(d, docsTopK)
+		}
+		if len(own) > 0 {
+			hits = own
+		}
+	}
 	if len(hits) == 0 {
 		return Reply{Text: pick(t.Lang,
 			"I found nothing about that in your documents.",
